@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+	<meta name="generator" content="Hugo 0.104.0" />
+    <meta charset="utf-8">
+<title>Linux Kernel Slide</title>
+<meta name="description" content="A Hugo theme for creating Reveal.js presentations">
+<meta name="author" content="Josh Dzielak">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="/reveal-js/css/reset.css">
+<link rel="stylesheet" href="/reveal-js/css/reveal.css"><link rel="stylesheet" href="/reveal-hugo/themes/robot-lung.css" id="theme"><link rel="stylesheet" href="/highlight-js/color-brewer.min.css">
+    
+
+<style>
+ 
+.reveal section pre {
+  box-shadow: none;
+  margin-top: 25px;
+  margin-bottom: 25px;
+  border: 1px solid lightgrey;
+}
+.reveal section pre:hover {
+  border: 1px solid grey;
+  transition: border 0.3s ease;
+}
+.reveal section pre > code {
+  padding: 10px;
+}
+.reveal table {
+  font-size: 0.65em;
+}
+ 
+.reveal section.side-by-side h1 {
+  position: absolute;
+}
+.reveal section.side-by-side h1:first-of-type {
+  left: 25%;
+}
+.reveal section.side-by-side h1:nth-of-type(2) {
+  right: 25%;
+}
+.reveal section[data-background-image] a,
+.reveal section[data-background-image] p,
+.reveal section[data-background-image] h2 {
+  color: white;
+}
+.reveal section[data-background-image] a {
+  text-decoration: underline;
+}
+</style>
+
+  </head>
+  <body>
+    
+    <div class="reveal">
+      <div class="slides">
+  
+
+    <section><h3 id="dude-do-you-even-audit-">Dude, Do you even audit? 🧐</h3>
+<img src="000-dude.png" alt="Dude, Do you even audit? 🧐" width="480">
+<br>
+지금 이 순간, Kaudit 부터 auditd 슈퍼 유저가 되기
+<p><strong>Paran Lee</strong> <strong>&lt;<a href="mailto:p4ranlee@gmail.com">p4ranlee@gmail.com</a>&gt;</strong></p>
+</section>
+
+  
+
+    <section><h2 id="index">Index</h2>
+<ul>
+<li>
+<ol>
+<li>audit 어떻게 보안에 활용할까?</li>
+</ol>
+<ul>
+<li>1.1 큰 그림</li>
+<li>1.2 Hook</li>
+<li>1.3 audit 슈퍼 유저가 되기</li>
+<li>1.4 감사 정책 포맷</li>
+</ul>
+</li>
+<li>
+<ol start="2">
+<li>리눅스 커널 audit 내부 구조 분석!</li>
+</ol>
+<ul>
+<li>2.1. 언제 어떻게 초기화 되는가?</li>
+<li>2.2. 감사 정책을 어떻게 로드할까?</li>
+<li>2.2. <strong>audit.log</strong> 로그에 찍히기까지</li>
+</ul>
+</li>
+<li>
+<ol start="3">
+<li>참고</li>
+</ol>
+</li>
+</ul>
+</section><section>
+<h3 id="1-audit-어떻게-보안에-활용할까">1. audit 어떻게 보안에 활용할까?</h3>
+<ul>
+<li>
+<p><em><code>/opt</code> 디렉토리 안에 중요한 파일이 있는데 어떤 사용자가 지우셨나요?</em></p>
+</li>
+<li>
+<p><em>이상한 소프트웨어가 자꾸 설치되네요. 어떤 사용자가 설치한거죠?</em></p>
+</li>
+<li>
+<p><em>소스 서버에 자꾸 이상한 IP 가 접근합니다. 이러다가 DRM 걸리거나 소스를 들고 나가는거 아닌지 모르겠어요.</em></p>
+</li>
+<li>
+<p><strong>audit 을 잘 사용하기 위해서 커널/유저 동작과 소프트웨어 컴포넌트는 어떻게 구성되어 있는 지 살펴봅니다.</strong></p>
+</li>
+</ul>
+</section><section>
+<h3 id="11-큰-그림">1.1 큰 그림</h3>
+<ul>
+<li>커널 프로세스 kauditd 와 auditd 서비스 데몬이 netlink 기반으로 통신을 합니다.</li>
+</ul>
+<img src="000-audit_components.png" alt="audit_components" width="720">
+</section><section>
+<h3 id="12-hook">1.2 Hook</h3>
+<ul>
+<li>audit_context</li>
+</ul>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기">1.3 audit 슈퍼 유저가 되기</h3>
+<ul>
+<li>auditd</li>
+<li>auditctl</li>
+</ul>
+</section><section>
+<h2 id="14-감사-정책-포맷">1.4 감사 정책 포맷</h2>
+<ul>
+<li>youtube</li>
+</ul>
+<p><a href="http://www.youtube.com/watch?feature=player_embedded&v=WzIpMlS89HI
+" target="_blank"><img src="http://img.youtube.com/vi/WzIpMlS89HI/0.jpg" 
+alt="Git Lens" width="400" height="300" /></a></p>
+</section>
+    <section><h3 id="2-리눅스-커널-audit-내부-구조-분석">2. 리눅스 커널 audit 내부 구조 분석!</h3>
+<ul>
+<li>kaudit 의 중요한 부분을 콕 콕 찍먹해볼 시간입니다.</li>
+</ul>
+</section><section>
+<h3 id="21-kaduit-언제-어떻게-초기화-될까요">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
+<ul>
+<li>auidt_init</li>
+</ul>
+</section><section>
+<h3 id="22-감사-정책을-어떻게-로드할까요">2.2. 감사 정책을 어떻게 로드할까요?</h3>
+<ul>
+<li><strong>auditctl</strong> 이 로드한 감사 정책 내용을 audit_context 로</li>
+</ul>
+<img src="000-audit_components.png" alt="audit_components" width="720">
+</section><section>
+<h3 id="23-auditlog-로그에-찍히기까지">2.3. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li>audit_context</li>
+</ul>
+</section>
+    <section><h3 id="참고">참고</h3>
+<ul>
+<li><a href="https://documentation.suse.com/sles/15-SP1/html/SLES-all/part-audit.html#">SLES 15-SP1 - Part VI The Linux Audit Framework</a></li>
+</ul>
+</section>
+
+</div>
+      
+<div class="line top"></div>
+<div class="line bottom"></div>
+<div class="line left"></div>
+<div class="line right"></div>
+
+    </div>
+<script type="text/javascript" src=/reveal-hugo/object-assign.js></script>
+
+<a href="/reveal-js/css/print/" id="print-location" style="display: none;"></a>
+<script type="text/javascript">
+  var printLocationElement = document.getElementById('print-location');
+  var link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.type = 'text/css';
+  link.href = printLocationElement.href + (window.location.search.match(/print-pdf/gi) ? 'pdf.css' : 'paper.css');
+  document.getElementsByTagName('head')[0].appendChild(link);
+</script>
+
+<script type="application/json" id="reveal-hugo-site-params">{"history":true,"templates":{"grey":{"background":"#424242","transition":"convex"}}}</script>
+<script type="application/json" id="reveal-hugo-page-params">{"custom_theme":"reveal-hugo/themes/robot-lung.css","highlight_theme":"color-brewer","margin":0.2,"templates":{"hotpink":{"background":"#FF4081","class":"hotpink"}},"transition":"slide","transition_speed":"fast"}</script>
+
+<script src="/reveal-js/js/reveal.js"></script>
+
+<script type="text/javascript">
+  
+  
+  function camelize(map) {
+    if (map) {
+      Object.keys(map).forEach(function(k) {
+        newK = k.replace(/(\_\w)/g, function(m) { return m[1].toUpperCase() });
+        if (newK != k) {
+          map[newK] = map[k];
+          delete map[k];
+        }
+      });
+    }
+    return map;
+  }
+  
+  var revealHugoDefaults = { center: true, controls: true, history: true, progress: true, transition: "slide" };
+  var revealHugoSiteParams = JSON.parse(document.getElementById('reveal-hugo-site-params').innerHTML);
+  var revealHugoPageParams = JSON.parse(document.getElementById('reveal-hugo-page-params').innerHTML);
+  
+  var options = Object.assign({},
+    camelize(revealHugoDefaults),
+    camelize(revealHugoSiteParams),
+    camelize(revealHugoPageParams));
+  Reveal.initialize(options);
+</script>
+
+
+  
+  
+  <script type="text/javascript" src="/reveal-js/plugin/markdown/marked.js"></script>
+  
+  <script type="text/javascript" src="/reveal-js/plugin/markdown/markdown.js"></script>
+  
+  <script type="text/javascript" src="/reveal-js/plugin/highlight/highlight.js"></script>
+  
+  <script type="text/javascript" src="/reveal-js/plugin/zoom-js/zoom.js"></script>
+  
+  
+  <script type="text/javascript" src="/reveal-js/plugin/notes/notes.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({startOnLoad: false});
+    let render = (event) => {
+      let mermaidElems = event.currentSlide.querySelectorAll('.mermaid');
+      if (!mermaidElems.length){
+          return
+      }
+      mermaidElems.forEach(mermaidElem => {
+          let processed = mermaidElem.getAttribute('data-processed');
+          if (!processed){
+              
+              mermaid.init(undefined, mermaidElem);
+          }
+      });
+    };
+    Reveal.addEventListener('slidechanged', render);
+    Reveal.addEventListener('ready', render);
+  </script>
+
+    
+    
+
+
+<script type="text/javascript">
+
+Reveal.addEventListener('slidechanged', function(event) {
+  console.log("🎞️ Slide is now " + event.indexh);
+});
+</script>
+
+  </body>
+</html>
