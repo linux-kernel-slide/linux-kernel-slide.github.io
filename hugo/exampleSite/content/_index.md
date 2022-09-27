@@ -17,6 +17,6 @@ background = "#FF4081"
 
 <img src="000-dude.png" alt="Dude, Do you even audit? 🧐" width="480">
 <br>
-지금 이 순간, Kaudit 부터 auditd 슈퍼 유저가 되기
+지금 이 순간, Linux Auditing System 슈퍼 유저 & 내부 구조 잘알!
 
 **Paran Lee** **\<<p4ranlee@gmail.com>\>**

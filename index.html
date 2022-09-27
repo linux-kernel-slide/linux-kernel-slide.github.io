@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-	<meta name="generator" content="Hugo 0.104.0" />
+	<meta name="generator" content="Hugo 0.102.3" />
     <meta charset="utf-8">
 <title>Linux Kernel Slide</title>
 <meta name="description" content="A Hugo theme for creating Reveal.js presentations">
@@ -61,7 +61,7 @@
     <section><h3 id="dude-do-you-even-audit-">Dude, Do you even audit? 🧐</h3>
 <img src="000-dude.png" alt="Dude, Do you even audit? 🧐" width="480">
 <br>
-지금 이 순간, Kaudit 부터 auditd 슈퍼 유저가 되기
+지금 이 순간, Linux Auditing System 슈퍼 유저 & 내부 구조 잘알!
 <p><strong>Paran Lee</strong> <strong>&lt;<a href="mailto:p4ranlee@gmail.com">p4ranlee@gmail.com</a>&gt;</strong></p>
 </section>
 
@@ -71,13 +71,13 @@
 <ul>
 <li>
 <ol>
-<li>audit 어떻게 보안에 활용할까?</li>
+<li>audit 을 어떻게 활용할까?</li>
 </ol>
 <ul>
 <li>1.1 큰 그림</li>
-<li>1.2 Hook</li>
+<li>1.2 man</li>
 <li>1.3 audit 슈퍼 유저가 되기</li>
-<li>1.4 감사 정책 포맷</li>
+<li>1.4 <strong>audit rule</strong> 포맷</li>
 </ul>
 </li>
 <li>
@@ -86,8 +86,8 @@
 </ol>
 <ul>
 <li>2.1. 언제 어떻게 초기화 되는가?</li>
-<li>2.2. 감사 정책을 어떻게 로드할까?</li>
 <li>2.2. <strong>audit.log</strong> 로그에 찍히기까지</li>
+<li>2.3. <strong>audit rule</strong> 을 어떻게 로드할까?</li>
 </ul>
 </li>
 <li>
@@ -97,72 +97,1189 @@
 </li>
 </ul>
 </section><section>
-<h3 id="1-audit-어떻게-보안에-활용할까">1. audit 어떻게 보안에 활용할까?</h3>
+<h3 id="1-audit-을-어떻게-활용할까-">1. audit 을 어떻게 활용할까? 🤔</h3>
 <ul>
-<li>
-<p><em><code>/opt</code> 디렉토리 안에 중요한 파일이 있는데 어떤 사용자가 지우셨나요?</em></p>
-</li>
-<li>
-<p><em>이상한 소프트웨어가 자꾸 설치되네요. 어떤 사용자가 설치한거죠?</em></p>
-</li>
-<li>
-<p><em>소스 서버에 자꾸 이상한 IP 가 접근합니다. 이러다가 DRM 걸리거나 소스를 들고 나가는거 아닌지 모르겠어요.</em></p>
-</li>
-<li>
-<p><strong>audit 을 잘 사용하기 위해서 커널/유저 동작과 소프트웨어 컴포넌트는 어떻게 구성되어 있는 지 살펴봅니다.</strong></p>
+<li>🤔 어떻게 증거를 남기지?
+<ul>
+<li>스토리지 서버 <em><code>/opt</code> 디렉토리 안에 중요한 파일을 누가 지우셨어욥!?</em></li>
+<li>컨테이너 안에 <em>이상한 소프트웨어가 자꾸 설치되요. 누가 설치한거죠..?</em></li>
+<li>사내 <em>소스 서버에 자꾸 이상한 IP 가 접근합니다. 이러다가 전부 DRM 걸리거나 소스 콸콸콸 유출 아니겠죠?!</em></li>
+</ul>
 </li>
 </ul>
+<h4 id="고민하지-말고-audit-을-사용해봅시다">고민하지 말고, audit 을 사용해봅시다!</h4>
+</section><section>
+<h3 id="1-audit-을-어떻게-활용할까--1">1. audit 을 어떻게 활용할까? 🤔</h3>
+<ul>
+<li><strong>audit 을 잘 사용하기 위한 사용법, 그리고 커널/유저 동작과 소프트웨어 컴포넌트는 어떻게 구성되어 있는지 살펴봅니다.</strong></li>
+</ul>
+<img src="000-audit-logging.png" alt="audit_components" width="600">
 </section><section>
 <h3 id="11-큰-그림">1.1 큰 그림</h3>
 <ul>
-<li>커널 프로세스 kauditd 와 auditd 서비스 데몬이 netlink 기반으로 통신을 합니다.</li>
+<li>유저 프로세스가 하는 행동의 로그를 남기기 위한 커널 프로세스 kaudit 와 유저 libaudit 프레임워크를 활용한 소프트웨어 인프라입니다.</li>
 </ul>
-<img src="000-audit_components.png" alt="audit_components" width="720">
-</section><section>
-<h3 id="12-hook">1.2 Hook</h3>
+<img src="000-audit_components.png" alt="audit_components" width="600">
 <ul>
-<li>audit_context</li>
+<li>커널의 hook 을 통하여 획득한 audit_context 를 기반으로 auditd 와 netlink 소켓을 행동 로깅합니다.</li>
 </ul>
 </section><section>
-<h3 id="13-audit-슈퍼-유저가-되기">1.3 audit 슈퍼 유저가 되기</h3>
+<h3 id="11-주요-특징">1.1 주요 특징</h3>
 <ul>
-<li>auditd</li>
-<li>auditctl</li>
+<li>커널 프로세스로 상주 중인 kaudit 은 security/lsm_audit.c 의 Hook 을 사용하여 ctx 의 정보를 가져옵니다.</li>
+<li>auditd 가 올라오면서 <strong>audit.rules</strong> 파일을 읽어 정책을 적용합니다.</li>
+<li>auditctl 로 운영 중인 시스템에 적용합니다.</li>
+<li>아키텍쳐 지원 : arm, x86, s390 (32, 64 bit)
+<ul>
+<li><a href="https://github.com/linux-audit/audit-userspace/blob/v3.0.9/lib/aarch64_table.h">aarch64_table.h</a></li>
+</ul>
+</li>
+<li>리눅스 커널 시스템 콜 테이블 확장에 맞춰 후킹을 팔로우 업 합니다.
+<ul>
+<li>(예) <code>_S(280, &quot;bpf&quot;)</code> audit 3.0 BPF 시스템 콜 감사 정책 지원</li>
+<li>Add <a href="https://man7.org/linux/man-pages/man2/bpf.2.html">bpf syscall</a> command argument interpretation to auparse</li>
+</ul>
+</li>
+<li>audit 은 빨간 모자를 포함한 많은 서버 솔루션에서 <a href="https://ko.wikipedia.org/wiki/%EC%B9%A8%EC%9E%85_%ED%83%90%EC%A7%80_%EC%8B%9C%EC%8A%A4%ED%85%9C">침입 탐지 시스템(Intrusion Detection System)</a>으로 활용 중입니다.</li>
 </ul>
 </section><section>
-<h2 id="14-감사-정책-포맷">1.4 감사 정책 포맷</h2>
+<h3 id="12-man">1.2 man</h3>
 <ul>
-<li>youtube</li>
+<li>auditd 는 유저 공간 Linux Auditing System 입니다.
+<ul>
+<li>audit records를 디스크에 쓰는 임무를 맡은 친구죠.</li>
 </ul>
-<p><a href="http://www.youtube.com/watch?feature=player_embedded&v=WzIpMlS89HI
-" target="_blank"><img src="http://img.youtube.com/vi/WzIpMlS89HI/0.jpg" 
-alt="Git Lens" width="400" height="300" /></a></p>
+</li>
+<li>로그는 ausearch 또는 aureport 를 통하여 편리하게 볼 수 있습니다.</li>
+<li>auditctl 을 통해 운영 중에 audit 설정을 바꾸거나 룰을 변경할 수 있어요!</li>
+<li>augenrules 은 /etc/audit/rules.d/ 안에 있는 룰 파일들을 <em>/etc/audit/audit.rules</em> 파일로 만들어 줍니다.</li>
+<li>auditd.conf 설정을 바꾸어서 auditd 를 입맛대로 설정할 수 있어요!</li>
+</ul>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---실행-확인해보기">1.3 audit 슈퍼 유저가 되기 - 실행 확인해보기</h3>
+<ul>
+<li>리눅스 커널의 kauditd</li>
+<li>유저 스페이스의 레드햇/데비안 계열 배포판 auditd 로 활성화 되어있습니다.</li>
+</ul>
+<pre><code># 레드햇 계열 # dnf install auditd
+# 데비안 계열 # apt install auditd
+</code></pre>
+<pre><code class="language-bash"># service auditd status
+Redirecting to /bin/systemctl status auditd.service
+● auditd.service - Security Auditing Service
+   Loaded: loaded (/usr/lib/systemd/system/auditd.service; enabled; vendor preset: enabled)
+   Active: active (running) since Wed 2022-09-28 01:42:53 KST; 54min ago
+     Docs: man:auditd(8)
+           https://github.com/linux-audit/audit-documentation
+ Main PID: 1014 (auditd)
+    Tasks: 4 (limit: 49134)
+   Memory: 3.6M
+   CGroup: /system.slice/auditd.service
+           ├─1014 /sbin/auditd
+           └─1016 /usr/sbin/sedispatch
+
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: enabled 1
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: failure 1
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: pid 1014
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: rate_limit 0
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: backlog_limit 8192
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: lost 0
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: backlog 4
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: backlog_wait_time 60000
+ 9월 28 01:42:53 localhost.localdomain augenrules[1033]: backlog_wait_time_actual 0
+ 9월 28 01:42:53 localhost.localdomain systemd[1]: Started Security Auditing Service.
+</code></pre>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---aureport">1.3 audit 슈퍼 유저가 되기 - aureport</h3>
+<p>ssh 접근, 즉 sshd fork 하여 유저가 로그인하는 행위의 로그를 봐 볼까요!</p>
+<pre><code class="language-bash">#  aureport -l --failed
+
+Login Report
+============================================
+# date time auid host term exe success event
+============================================
+1. 2022년 09월 28일 05:33:54 (unknown) 192.168.66.1 ssh /usr/sbin/sshd no 205
+2. 2022년 09월 28일 05:33:54 (unknown) 192.168.66.1 ssh /usr/sbin/sshd no 216
+3. 2022년 09월 28일 05:34:06 (unknown) 192.168.66.1 ssh /usr/sbin/sshd no 227
+4. 2022년 09월 28일 05:35:44 ahnlab 192.168.66.1 ssh /usr/sbin/sshd no 268
+5. 2022년 09월 28일 05:35:44 ahnlab 192.168.66.1 ssh /usr/sbin/sshd no 281
+</code></pre>
+<pre><code class="language-bash">#  aureport -l --success
+
+Login Report
+============================================
+# date time auid host term exe success event
+============================================
+1. 2022년 09월 28일 04:47:43 1000 ::1 /dev/pts/1 /usr/sbin/sshd yes 208
+2. 2022년 09월 28일 05:35:38 1000 192.168.66.1 /dev/pts/1 /usr/sbin/sshd yes 245
+3. 2022년 09월 28일 05:35:46 1000 192.168.66.1 ssh /usr/sbin/sshd yes 299
+</code></pre>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---rule">1.3 audit 슈퍼 유저가 되기 - rule</h3>
+<ul>
+<li>외부에서 /etc/ssh/sshd_config 파일을 읽거나 수정하려는 모든 시도를 남겨볼까요?</li>
+<li>해당 rule 을 sshd_config 키로 기록해보죠!</li>
+</ul>
+<pre><code class="language-bash"> $ auditctl -w /etc/ssh/sshd_config -p warx -k sshd_config
+</code></pre>
+<pre><code class="language-bash"> $ # ausearch -k sshd_config
+----
+time-&gt;Wed Sep 28 06:04:31 2022
+type=SYSCALL msg=audit(1664312671.115:387): arch=c000003e syscall=44 success=yes exit=1088 a0=4 a1=7ffc4fcb9be0 a2=440 a3=0 items=0 ppid=7613 pid=52609 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=3 comm=&quot;auditctl&quot; exe=&quot;/usr/sbin/auditctl&quot; subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=(null)
+type=CONFIG_CHANGE msg=audit(1664312671.115:387): auid=1000 ses=3 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 op=add_rule key=&quot;sshd_config&quot; list=4 res=1
+----
+time-&gt;Wed Sep 28 06:04:46 2022
+type=PATH msg=audit(1664312686.595:388): item=0 name=&quot;/etc/ssh/sshd_config&quot; inode=103004708 dev=fd:00 mode=0100600 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:etc_t:s0 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 cap_frootid=0
+type=SYSCALL msg=audit(1664312686.595:388): arch=c000003e syscall=257 success=yes exit=3 a0=ffffff9c a1=55dbad3cf050 a2=0 a3=0 items=1 ppid=7613 pid=53627 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=3 comm=&quot;vim&quot; exe=&quot;/usr/bin/vim&quot; subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=&quot;sshd_config&quot;
+</code></pre>
+<ul>
+<li>룰 예시를 조금 더 살펴볼려면? <strong><a href="https://github.com/linux-audit/audit-userspace/blob/v3.0.9/rules/30-stig.rules">30-stig.rules</a></strong>
+<ul>
+<li>Security Technical Implementation (STIG, 미국 국방성의 DISA 보안 구성 표준)에서 요구하는 조건을 충족할 수 있도록 구성된 Audit 규칙입니다.</li>
+</ul>
+</li>
+</ul>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---rule-1">1.3 audit 슈퍼 유저가 되기 - rule</h3>
+<ul>
+<li>type=SYSCALL
+<ul>
+<li>type 필드에는 레코드 유형이 포함됩니다. 이 예제에서 SYSCALL 값은 커널에 대한 시스템 호출에 의해 이 레코드가 트리거되었음을 지정합니다.</li>
+</ul>
+</li>
+<li>key=&ldquo;sshd_config&rdquo;
+<ul>
+<li>키 필드는 감사 로그에서 이 이벤트를 생성한 규칙과 관련된 관리자 정의 문자열을 기록합니다.</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-bash">type=SYSCALL msg=audit(1364481363.243:24287): arch=c000003e
+syscall=2 success=no exit=-13 
+a0=7fffd19c5592 a1=0 a2=7fffd19c4b50 a3=a items=1 
+ppid=2686 pid=3538 auid=1000 
+uid=1000 gid=1000 euid=1000 suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 
+tty=pts0 ses=1 comm=&quot;cat&quot; exe=&quot;/bin/cat&quot; 
+subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 
+key=&quot;sshd_config&quot;
+</code></pre>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---rule-2">1.3 audit 슈퍼 유저가 되기 - rule</h3>
+<ul>
+<li>ppid=2686
+<ul>
+<li>ppid 필드는 상위 프로세스 ID(PPID)를 기록합니다. 이 경우 2686 은 bash 와 같은 상위 프로세스의 PPID였습니다.</li>
+</ul>
+</li>
+<li>pid=3538
+<ul>
+<li>pid 필드는 프로세스 ID(PID)를 기록합니다. 이 경우 3538 은 cat 프로세스의 PID입니다.</li>
+</ul>
+</li>
+<li>auid=1000
+<ul>
+<li>auid 필드는 loginuid인 Audit 사용자 ID를 기록합니다. 이 ID는 로그인 시 사용자에게 할당되며,
+예를 들어 su - john 명령으로 사용자 계정을 전환하여 사용자의 ID가 변경될 경우에도 모든 프로세스에 상속됩니다.</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-bash">type=SYSCALL msg=audit(1364481363.243:24287): arch=c000003e
+syscall=2 success=no exit=-13 
+a0=7fffd19c5592 a1=0 a2=7fffd19c4b50 a3=a items=1 
+ppid=2686 pid=3538 auid=1000 
+uid=1000 gid=1000 euid=1000 suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 
+tty=pts0 ses=1 comm=&quot;cat&quot; exe=&quot;/bin/cat&quot; 
+subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 
+key=&quot;sshd_config&quot;
+</code></pre>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---config">1.3 audit 슈퍼 유저가 되기 - config</h3>
+<p>기본 설정은 아래와 같이 확인 할 수 있습니다.</p>
+<ul>
+<li>event buffer 사이즈 8192</li>
+<li>burst of events 시에 60000 만큼 기다린다.</li>
+</ul>
+<pre><code># cat /etc/audit/rules.d/audit.rules 
+## First rule - delete all
+-D
+
+## Increase the buffers to survive stress events.
+## Make this bigger for busy systems
+-b 8192
+
+## This determine how long to wait in burst of events
+--backlog_wait_time 60000
+
+## Set failure mode to syslog
+-f 1
+</code></pre>
+<pre><code># cat /etc/audit/audit.rules
+## This file is automatically generated from /etc/audit/rules.d
+-D
+-b 8192
+-f 1
+--backlog_wait_time 60000
+</code></pre>
 </section>
-    <section><h3 id="2-리눅스-커널-audit-내부-구조-분석">2. 리눅스 커널 audit 내부 구조 분석!</h3>
+    <section><h3 id="2-리눅스-커널-kauditd-내부-구조-분석">2. 리눅스 커널 kauditd 내부 구조 분석!</h3>
 <ul>
-<li>kaudit 의 중요한 부분을 콕 콕 찍먹해볼 시간입니다.</li>
+<li>kaudit 의 중요한 부분을 콕 찍먹해볼 시간입니다.</li>
 </ul>
 </section><section>
 <h3 id="21-kaduit-언제-어떻게-초기화-될까요">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
 <ul>
-<li>auidt_init</li>
+<li><strong>kernel/audit.c</strong>
+<ul>
+<li><strong>postcore_initcall(audit_init);</strong></li>
 </ul>
+</li>
+</ul>
+<pre><code>-&gt; arch_call_rest_init()
+  -&gt; rest_init()
+    -&gt; pid = kernel_thread(kernel_init, NULL, CLONE_FS);
+      -&gt; kernel_init()
+        -&gt; kernel_init_freeable()
+          -&gt; do_basic_setup()
+            -&gt; do_initcalls()
+</code></pre>
+<ul>
+<li>do_initcalls() 내의 Linux 커널 부팅 중 초기화 호출 상대적 순서를 살펴보면, 3번째에 해당하는 것을 볼 수 있습니다.
+<ul>
+<li>early_initcall()</li>
+<li>core_initcall()</li>
+<li>postcore_initcall()</li>
+<li>arch_initcall(), subsys_initcall(), fs_initcall(), device_initcall()</li>
+</ul>
+</li>
+</ul>
+</section><section>
+<h3 id="21-kaduit-언제-어떻게-초기화-될까요-1">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
+<pre><code># dmesg | grep audit
+[    0.215458] audit: initializing netlink subsys (disabled)
+[    0.215500] audit: type=2000 audit(1664301355.215:1): state=initialized audit_enabled=0 res=1
+[    7.430702] audit: type=1404 audit(1664301363.005:2): enforcing=1 old_enforcing=0 auid=4294967295 ses=4294967295 enabled=1 old-enabled=1 lsm=selinux res=1
+[    7.786790] audit: type=1403 audit(1664301363.360:3): auid=4294967295 ses=4294967295 lsm=selinux res=1
+</code></pre>
+</section><section>
+<h3 id="21-kaduit-언제-어떻게-초기화-될까요-2">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
+<pre><code class="language-c">postcore_initcall(audit_init);
+</code></pre>
+</section><section>
+<h3 id="21-kaduit-언제-어떻게-초기화-될까요-3">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
+<ul>
+<li><strong>audit_init()</strong> 다음 항목에 주목해서 보면 어떨까요?
+<ul>
+<li>audit_queue</li>
+<li>kauditd_thread()</li>
+<li>audit_log()</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-c">/* Initialize audit support at boot time. */
+static int __init audit_init(void)
+{
+	int i;
+
+	if (audit_initialized == AUDIT_DISABLED)
+		return 0;
+
+	audit_buffer_cache = kmem_cache_create(&quot;audit_buffer&quot;,
+					       sizeof(struct audit_buffer),
+					       0, SLAB_PANIC, NULL);
+
+	skb_queue_head_init(&amp;audit_queue);
+	skb_queue_head_init(&amp;audit_retry_queue);
+	skb_queue_head_init(&amp;audit_hold_queue);
+
+	for (i = 0; i &lt; AUDIT_INODE_BUCKETS; i++)
+		INIT_LIST_HEAD(&amp;audit_inode_hash[i]);
+    // ...
+	audit_initialized = AUDIT_INITIALIZED;
+
+	kauditd_task = kthread_run(kauditd_thread, NULL, &quot;kauditd&quot;);
+	if (IS_ERR(kauditd_task)) {
+		int err = PTR_ERR(kauditd_task);
+		panic(&quot;audit: failed to start the kauditd thread (%d)\n&quot;, err);
+	}
+
+	audit_log(NULL, GFP_KERNEL, AUDIT_KERNEL,
+		&quot;state=initialized audit_enabled=%u res=1&quot;,
+		 audit_enabled);
+
+	return 0;
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li><strong>audit_log_start()</strong> : struct audit_buffer 인스턴스를 만들어줍니다.</li>
+<li><strong>audit_log_end()</strong> : 만든 버퍼를 큐잉합니다.</li>
+</ul>
+<pre><code class="language-c">/* The audit_buffer is used when formatting an audit record.  The caller
+ * locks briefly to get the record off the freelist or to allocate the
+ * buffer, and locks briefly to send the buffer to the netlink layer or
+ * to place it on a transmit queue.  Multiple audit_buffers can be in
+ * use simultaneously. */
+struct audit_buffer {
+	struct sk_buff       *skb;	/* formatted skb ready to send */
+	struct audit_context *ctx;	/* NULL or associated context */
+	gfp_t		     gfp_mask;
+};
+</code></pre>
+<pre><code class="language-c">/**
+ * audit_log - Log an audit record
+ * @ctx: audit context
+ * @gfp_mask: type of allocation
+ * @type: audit message type
+ * @fmt: format string to use
+ * @...: variable parameters matching the format string
+ *
+ * This is a convenience function that calls audit_log_start,
+ * audit_log_vformat, and audit_log_end.  It may be called
+ * in any context.
+ */
+void audit_log(struct audit_context *ctx, gfp_t gfp_mask, int type,
+	       const char *fmt, ...)
+{
+	struct audit_buffer *ab;
+	va_list args;
+
+	ab = audit_log_start(ctx, gfp_mask, type);
+	if (ab) {
+		va_start(args, fmt);
+		audit_log_vformat(ab, fmt, args);
+		va_end(args);
+		audit_log_end(ab);
+	}
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-1">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li><strong>struct audit_context</strong> 를 가지고 <strong>struct audit_buffer</strong> 인스턴스를 만들어줍니다.</li>
+</ul>
+<pre><code class="language-c">/**
+ * audit_log_start - obtain an audit buffer
+ * @ctx: audit_context (may be NULL)
+ * @gfp_mask: type of allocation
+ * @type: audit message type
+ *
+ * Returns audit_buffer pointer on success or NULL on error.
+ *
+ * Obtain an audit buffer.  This routine does locking to obtain the
+ * audit buffer, but then no locking is required for calls to
+ * audit_log_*format.  If the task (ctx) is a task that is currently in a
+ * syscall, then the syscall is marked as auditable and an audit record
+ * will be written at syscall exit.  If there is no associated task, then
+ * task context (ctx) should be NULL.
+ */
+struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
+				     int type)
+{
+	struct audit_buffer *ab;
+	struct timespec64 t;
+	unsigned int serial;
+
+	if (audit_initialized != AUDIT_INITIALIZED)
+		return NULL;
+
+	if (unlikely(!audit_filter(type, AUDIT_FILTER_EXCLUDE)))
+		return NULL;
+
+	/* NOTE: don't ever fail/sleep on these two conditions:
+	 * 1. auditd generated record - since we need auditd to drain the
+	 *    queue; also, when we are checking for auditd, compare PIDs using
+	 *    task_tgid_vnr() since auditd_pid is set in audit_receive_msg()
+	 *    using a PID anchored in the caller's namespace
+	 * 2. generator holding the audit_cmd_mutex - we don't want to block
+	 *    while holding the mutex, although we do penalize the sender
+	 *    later in audit_receive() when it is safe to block
+	 */
+	if (!(auditd_test_task(current) || audit_ctl_owner_current())) {
+		long stime = audit_backlog_wait_time;
+
+		while (audit_backlog_limit &amp;&amp;
+		       (skb_queue_len(&amp;audit_queue) &gt; audit_backlog_limit)) {
+			/* wake kauditd to try and flush the queue */
+			wake_up_interruptible(&amp;kauditd_wait);
+
+			/* sleep if we are allowed and we haven't exhausted our
+			 * backlog wait limit */
+			if (gfpflags_allow_blocking(gfp_mask) &amp;&amp; (stime &gt; 0)) {
+				long rtime = stime;
+
+				DECLARE_WAITQUEUE(wait, current);
+
+				add_wait_queue_exclusive(&amp;audit_backlog_wait,
+							 &amp;wait);
+				set_current_state(TASK_UNINTERRUPTIBLE);
+				stime = schedule_timeout(rtime);
+				atomic_add(rtime - stime, &amp;audit_backlog_wait_time_actual);
+				remove_wait_queue(&amp;audit_backlog_wait, &amp;wait);
+			} else {
+				if (audit_rate_check() &amp;&amp; printk_ratelimit())
+					pr_warn(&quot;audit_backlog=%d &gt; audit_backlog_limit=%d\n&quot;,
+						skb_queue_len(&amp;audit_queue),
+						audit_backlog_limit);
+				audit_log_lost(&quot;backlog limit exceeded&quot;);
+				return NULL;
+			}
+		}
+	}
+
+	ab = audit_buffer_alloc(ctx, gfp_mask, type);
+	if (!ab) {
+		audit_log_lost(&quot;out of memory in audit_log_start&quot;);
+		return NULL;
+	}
+
+	audit_get_stamp(ab-&gt;ctx, &amp;t, &amp;serial);
+	/* cancel dummy context to enable supporting records */
+	if (ctx)
+		ctx-&gt;dummy = 0;
+	audit_log_format(ab, &quot;audit(%llu.%03lu:%u): &quot;,
+			 (unsigned long long)t.tv_sec, t.tv_nsec/1000000, serial);
+
+	return ab;
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-2">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li><strong>struct audit_buffer</strong> 를 가지고 넷링크 통신을 위한 sk_buff 를 만들고, audit_queue 테일에 큐잉합니다.</li>
+</ul>
+<pre><code class="language-c">/**
+ * audit_log_end - end one audit record
+ * @ab: the audit_buffer
+ *
+ * We can not do a netlink send inside an irq context because it blocks (last
+ * arg, flags, is not set to MSG_DONTWAIT), so the audit buffer is placed on a
+ * queue and a kthread is scheduled to remove them from the queue outside the
+ * irq context.  May be called in any context.
+ */
+void audit_log_end(struct audit_buffer *ab)
+{
+	struct sk_buff *skb;
+	struct nlmsghdr *nlh;
+
+	if (!ab)
+		return;
+
+	if (audit_rate_check()) {
+		skb = ab-&gt;skb;
+		ab-&gt;skb = NULL;
+
+		/* setup the netlink header, see the comments in
+		 * kauditd_send_multicast_skb() for length quirks */
+		nlh = nlmsg_hdr(skb);
+		nlh-&gt;nlmsg_len = skb-&gt;len - NLMSG_HDRLEN;
+
+		/* queue the netlink packet and poke the kauditd thread */
+		skb_queue_tail(&amp;audit_queue, skb);
+		wake_up_interruptible(&amp;kauditd_wait);
+	} else
+		audit_log_lost(&quot;rate limit exceeded&quot;);
+
+	audit_buffer_free(ab);
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-3">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li>kthread 에서는 irq context 밖에서 audit_queue 처리가 가능합니다!
+<ul>
+<li>audit buffer 는 audit_queue 에 들어가구요.</li>
+<li>프로세스 컨텍스트에서 처리해서 핸들링이 쉬워지죠!</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-c">/**
+ * kauditd_thread - Worker thread to send audit records to userspace
+ * @dummy: unused
+ */
+static int kauditd_thread(void *dummy)
+{
+	int rc;
+	u32 portid = 0;
+	struct net *net = NULL;
+	struct sock *sk = NULL;
+	struct auditd_connection *ac;
+
+#define UNICAST_RETRIES 5
+
+	set_freezable();
+	while (!kthread_should_stop()) {
+		/* NOTE: see the lock comments in auditd_send_unicast_skb() */
+		rcu_read_lock();
+		ac = rcu_dereference(auditd_conn);
+		if (!ac) {
+			rcu_read_unlock();
+			goto main_queue;
+		}
+		net = get_net(ac-&gt;net);
+		sk = audit_get_sk(net);
+		portid = ac-&gt;portid;
+		rcu_read_unlock();
+
+		/* attempt to flush the hold queue */
+		rc = kauditd_send_queue(sk, portid,
+					&amp;audit_hold_queue, UNICAST_RETRIES,
+					NULL, kauditd_rehold_skb);
+		if (rc &lt; 0) {
+			sk = NULL;
+			auditd_reset(ac);
+			goto main_queue;
+		}
+
+		/* attempt to flush the retry queue */
+		rc = kauditd_send_queue(sk, portid,
+					&amp;audit_retry_queue, UNICAST_RETRIES,
+					NULL, kauditd_hold_skb);
+		if (rc &lt; 0) {
+			sk = NULL;
+			auditd_reset(ac);
+			goto main_queue;
+		}
+
+main_queue:
+		/* process the main queue - do the multicast send and attempt
+		 * unicast, dump failed record sends to the retry queue; if
+		 * sk == NULL due to previous failures we will just do the
+		 * multicast send and move the record to the hold queue */
+		rc = kauditd_send_queue(sk, portid, &amp;audit_queue, 1,
+					kauditd_send_multicast_skb,
+					(sk ?
+					 kauditd_retry_skb : kauditd_hold_skb));
+		if (ac &amp;&amp; rc &lt; 0)
+			auditd_reset(ac);
+		sk = NULL;
+
+		/* drop our netns reference, no auditd sends past this line */
+		if (net) {
+			put_net(net);
+			net = NULL;
+		}
+
+		/* we have processed all the queues so wake everyone */
+		wake_up(&amp;audit_backlog_wait);
+
+		/* NOTE: we want to wake up if there is anything on the queue,
+		 *       regardless of if an auditd is connected, as we need to
+		 *       do the multicast send and rotate records from the
+		 *       main queue to the retry/hold queues */
+		wait_event_freezable(kauditd_wait,
+				     (skb_queue_len(&amp;audit_queue) ? 1 : 0));
+	}
+
+	return 0;
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-4">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<pre><code class="language-c">/**
+ * kauditd_send_queue - Helper for kauditd_thread to flush skb queues
+ * @sk: the sending sock
+ * @portid: the netlink destination
+ * @queue: the skb queue to process
+ * @retry_limit: limit on number of netlink unicast failures
+ * @skb_hook: per-skb hook for additional processing
+ * @err_hook: hook called if the skb fails the netlink unicast send
+ *
+ * Description:
+ * Run through the given queue and attempt to send the audit records to auditd,
+ * returns zero on success, negative values on failure.  It is up to the caller
+ * to ensure that the @sk is valid for the duration of this function.
+ *
+ */
+static int kauditd_send_queue(struct sock *sk, u32 portid,
+			      struct sk_buff_head *queue,
+			      unsigned int retry_limit,
+			      void (*skb_hook)(struct sk_buff *skb),
+			      void (*err_hook)(struct sk_buff *skb, int error))
+{
+	int rc = 0;
+	struct sk_buff *skb = NULL;
+	struct sk_buff *skb_tail;
+	unsigned int failed = 0;
+
+	/* NOTE: kauditd_thread takes care of all our locking, we just use
+	 *       the netlink info passed to us (e.g. sk and portid) */
+
+	skb_tail = skb_peek_tail(queue);
+	while ((skb != skb_tail) &amp;&amp; (skb = skb_dequeue(queue))) {
+		/* call the skb_hook for each skb we touch */
+		if (skb_hook)
+			(*skb_hook)(skb);
+
+		/* can we send to anyone via unicast? */
+		if (!sk) {
+			if (err_hook)
+				(*err_hook)(skb, -ECONNREFUSED);
+			continue;
+		}
+
+retry:
+		/* grab an extra skb reference in case of error */
+		skb_get(skb);
+		rc = netlink_unicast(sk, skb, portid, 0);
+		if (rc &lt; 0) {
+			/* send failed - try a few times unless fatal error */
+			if (++failed &gt;= retry_limit ||
+			    rc == -ECONNREFUSED || rc == -EPERM) {
+				sk = NULL;
+				if (err_hook)
+					(*err_hook)(skb, rc);
+				if (rc == -EAGAIN)
+					rc = 0;
+				/* continue to drain the queue */
+				continue;
+			} else
+				goto retry;
+		} else {
+			/* skb sent - drop the extra reference and continue */
+			consume_skb(skb);
+			failed = 0;
+		}
+	}
+
+	return (rc &gt;= 0 ? 0 : rc);
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-5">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li>The per-task audit context.</li>
+</ul>
+<pre><code class="language-c">/* The per-task audit context. */
+struct audit_context {
+	int		    dummy;	/* must be the first element */
+	enum {
+		AUDIT_CTX_UNUSED,	/* audit_context is currently unused */
+		AUDIT_CTX_SYSCALL,	/* in use by syscall */
+		AUDIT_CTX_URING,	/* in use by io_uring */
+	} context;
+	enum audit_state    state, current_state;
+	unsigned int	    serial;     /* serial number for record */
+	int		    major;      /* syscall number */
+	int		    uring_op;   /* uring operation */
+	struct timespec64   ctime;      /* time of syscall entry */
+	unsigned long	    argv[4];    /* syscall arguments */
+	long		    return_code;/* syscall return code */
+	u64		    prio;
+	int		    return_valid; /* return code is valid */
+	/*
+	 * The names_list is the list of all audit_names collected during this
+	 * syscall.  The first AUDIT_NAMES entries in the names_list will
+	 * actually be from the preallocated_names array for performance
+	 * reasons.  Except during allocation they should never be referenced
+	 * through the preallocated_names array and should only be found/used
+	 * by running the names_list.
+	 */
+	struct audit_names  preallocated_names[AUDIT_NAMES];
+	int		    name_count; /* total records in names_list */
+	struct list_head    names_list;	/* struct audit_names-&gt;list anchor */
+	char		    *filterkey;	/* key for rule that triggered record */
+	struct path	    pwd;
+	struct audit_aux_data *aux;
+	struct audit_aux_data *aux_pids;
+	struct sockaddr_storage *sockaddr;
+	size_t sockaddr_len;
+				/* Save things to print about task_struct */
+	pid_t		    pid, ppid;
+	kuid_t		    uid, euid, suid, fsuid;
+	kgid_t		    gid, egid, sgid, fsgid;
+	unsigned long	    personality;
+	int		    arch;
+
+	pid_t		    target_pid;
+	kuid_t		    target_auid;
+	kuid_t		    target_uid;
+	unsigned int	    target_sessionid;
+	u32		    target_sid;
+	char		    target_comm[TASK_COMM_LEN];
+
+	struct audit_tree_refs *trees, *first_trees;
+	struct list_head killed_trees;
+	int tree_count;
+
+	int type;
+	union {
+		struct {
+			int nargs;
+			long args[6];
+		} socketcall;
+		struct {
+			kuid_t			uid;
+			kgid_t			gid;
+			umode_t			mode;
+			u32			osid;
+			int			has_perm;
+			uid_t			perm_uid;
+			gid_t			perm_gid;
+			umode_t			perm_mode;
+			unsigned long		qbytes;
+		} ipc;
+		struct {
+			mqd_t			mqdes;
+			struct mq_attr		mqstat;
+		} mq_getsetattr;
+		struct {
+			mqd_t			mqdes;
+			int			sigev_signo;
+		} mq_notify;
+		struct {
+			mqd_t			mqdes;
+			size_t			msg_len;
+			unsigned int		msg_prio;
+			struct timespec64	abs_timeout;
+		} mq_sendrecv;
+		struct {
+			int			oflag;
+			umode_t			mode;
+			struct mq_attr		attr;
+		} mq_open;
+		struct {
+			pid_t			pid;
+			struct audit_cap_data	cap;
+		} capset;
+		struct {
+			int			fd;
+			int			flags;
+		} mmap;
+		struct open_how openat2;
+		struct {
+			int			argc;
+		} execve;
+		struct {
+			char			*name;
+		} module;
+		struct {
+			struct audit_ntp_data	ntp_data;
+			struct timespec64	tk_injoffset;
+		} time;
+	};
+	int fds[2];
+	struct audit_proctitle proctitle;
+};
+</code></pre>
+<pre><code class="language-c">static inline void audit_set_context(struct task_struct *task, struct audit_context *ctx)
+{
+	task-&gt;audit_context = ctx;
+}
+
+static inline struct audit_context *audit_context(void)
+{
+	return current-&gt;audit_context;
+}
+</code></pre>
+</section><section>
+<h3 id="23-audit-rule-을-어떻게-로드할까">2.3. audit rule 을 어떻게 로드할까?</h3>
+<ul>
+<li>유저 스페이스 : auditd</li>
+</ul>
+<pre><code class="language-c">int audit_add_rule_data(int fd, struct audit_rule_data *rule,
+                        int flags, int action)
+{
+	int rc;
+
+	rule-&gt;flags  = flags;
+	rule-&gt;action = action;
+	rc = audit_send(fd, AUDIT_ADD_RULE, rule,
+			sizeof(struct audit_rule_data) + rule-&gt;buflen);
+</code></pre>
+</section><section>
+<h3 id="23-audit-rule-을-어떻게-로드할까-1">2.3. audit rule 을 어떻게 로드할까?</h3>
+<ul>
+<li>커널 스페이스 : kaduditd</li>
+</ul>
+<pre><code class="language-c">/**
+ * audit_receive - receive messages from a netlink control socket
+ * @skb: the message buffer
+ *
+ * Parse the provided skb and deal with any messages that may be present,
+ * malformed skbs are discarded.
+ */
+static void audit_receive(struct sk_buff  *skb)
+{
+	struct nlmsghdr *nlh;
+	/*
+	 * len MUST be signed for nlmsg_next to be able to dec it below 0
+	 * if the nlmsg_len was not aligned
+	 */
+	int len;
+	int err;
+
+	nlh = nlmsg_hdr(skb);
+	len = skb-&gt;len;
+
+	audit_ctl_lock();
+	while (nlmsg_ok(nlh, len)) {
+		err = audit_receive_msg(skb, nlh);
+</code></pre>
+</section>
+    <section><h3 id="2-유저-스페이스-auditd-콤포넌트-분석">2. 유저 스페이스 auditd 콤포넌트 분석!</h3>
+<ul>
+<li>auditd 의 중요한 부분을 콕 찍먹해볼 시간입니다.</li>
+</ul>
+</section><section>
+<h3 id="21-auditd-언제-어떻게-초기화-할까요">2.1. auditd 언제 어떻게 초기화 할까요?</h3>
+<ul>
+<li><a href="https://github.com/linux-audit/audit-userspace/blob/v3.0.9/src/auditd.c">auditd.c - main()</a> 콕 찍어볼까요?</li>
+</ul>
+<pre><code class="language-c">
+	/* Load the Configuration File */
+	if (load_config(&amp;config, TEST_AUDITD))
+
+	/* Init netlink */
+	if ((fd = audit_open())
+
+	// Init complete, start event loop
+	if (!stop)
+		ev_loop (loop, 0);
+
+</code></pre>
+<pre><code class="language-c">int audit_open(void)
+{
+	int fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_AUDIT);
+
+</code></pre>
 </section><section>
 <h3 id="22-감사-정책을-어떻게-로드할까요">2.2. 감사 정책을 어떻게 로드할까요?</h3>
-<ul>
-<li><strong>auditctl</strong> 이 로드한 감사 정책 내용을 audit_context 로</li>
-</ul>
-<img src="000-audit_components.png" alt="audit_components" width="720">
+<p>auditd 데몬을 직접 만들어볼까요? libaudit + auditd 내부에서도 사용하는 libev 로~</p>
+<pre><code class="language-c">#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+
+#include &lt;libaudit.h&gt;
+
+#include &lt;ev.h&gt;
+
+static int fd;
+
+void monitoring(struct ev_loop *loop, struct ev_io *io, int revents) {
+    struct audit_reply reply;
+
+    audit_get_reply(fd, &amp;reply, GET_REPLY_NONBLOCKING, 0);
+
+    if (reply.type != AUDIT_EOE &amp;&amp;
+            reply.type != AUDIT_PROCTITLE &amp;&amp;
+            reply.type != AUDIT_PATH) {
+        printf(&quot;Event: Type=%s Message=%.*s\n&quot;,
+                     audit_msg_type_to_name(reply.type),
+                     reply.len,
+                     reply.message);
+    }
+}
+
+int main() {
+    fd = audit_open();
+    struct audit_rule_data* rule = new audit_rule_data();
+
+    // 디렉토리에 대한 감시는 다음과 같은 API 를 사용합니다.
+    //  audit_add_watch_dir(AUDIT_DIR, &amp;rule, &quot;bitcoin&quot;);
+
+    audit_add_watch(&amp;rule, &quot;bitcoin/wallet.dat&quot;);
+
+    // 셋업한 룰을 auditd 에 넘겨줍니다.
+    audit_add_rule_data(fd, rule, AUDIT_FILTER_USER, AUDIT_ALWAYS);
+    struct ev_io monitor;
+    audit_set_pid(fd, getpid(), WAIT_YES);
+
+    audit_set_enabled(fd, 1);
+    struct ev_loop *loop = ev_default_loop(EVFLAG_NOENV);
+
+    ev_io_init(&amp;monitor, monitoring, fd, EV_READ);
+    ev_io_start(loop, &amp;monitor);
+
+    // wallet.dat 파일에 이벤트가 오는지 확인하면서 감시합니다.
+    ev_loop(loop, 0);
+
+    audit_close(fd);
+    return 0;
+}
+</code></pre>
 </section><section>
-<h3 id="23-auditlog-로그에-찍히기까지">2.3. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="주요-릴리즈-변경">주요 릴리즈 변경</h3>
+<p>2020-12-17 audit 3.0 릴리즈부터는 기존 audispd 이벤트 디스패쳐 데몬을 auditd 로 통합했습니다.</p>
+<p>This is the long awaited 3.0 major feature release. Most notable item is that audispd is gone.</p>
 <ul>
-<li>audit_context</li>
+<li>Merge auditd and audispd code</li>
+<li>Move all audispd config files under /etc/audit/</li>
+<li>Move audispd.conf settings into auditd.conf</li>
 </ul>
 </section>
-    <section><h3 id="참고">참고</h3>
+    <section><h3 id="todo">TODO</h3>
+<pre><code>Future roadmap (subject to change):
+===================================
+3.1
+* Basic HIDS based on reactive audit component
+* Multi-thread audisp-remote
+* Add keywords for time: month-ago, this-hour, last-hour
+* If searching user/group doesn't map to uid/gid, do translated string search
+* In auditd, look into non-blocking handling of write to plugins
+* Support multiple time streams when searching
+
+3.2
+* Container support
+* Support TLS PSK as remote logging transport
+* Add rule verify to detect mismatch between in-kernel and on-disk rules
+* audisp-remote, add config to say what home network is so 
+  laptops don't try if their not on a network that can reach the server.
+* Fix audit.pc.in to use Requires.private
+* Change ausearch to output name=&quot;&quot; unless its a real null.
+  (mount) ausearch-report.c, 523. FIXME
+* Fix SIGHUP for auditd network settings
+* Add ability to filter events in auditd
+</code></pre>
+</section><section>
+<h1 id="heading">🤗</h1>
+<p>이상입니다. ^^7 고생하셨습니다!</p>
+</section><section>
+<h3 id="참고">참고</h3>
 <ul>
 <li><a href="https://documentation.suse.com/sles/15-SP1/html/SLES-all/part-audit.html#">SLES 15-SP1 - Part VI The Linux Audit Framework</a></li>
+<li><a href="https://people.redhat.com/sgrubb/audit/audit-ids.pdf">Audit and IDS - Red Hat People</a></li>
+<li><a href="https://www.youtube.com/watch?v=w-XN9PGlMDc">Tracking User and System activity with Oracle Linux Auditing</a></li>
+<li><a href="https://stopdisablingselinux.com/">Stop disabling SELinux</a></li>
 </ul>
+<h3 id="miscaudit-package">misc(audit package)</h3>
+<pre><code># rpm -ql audit
+/etc/audit
+/etc/audit/audit-stop.rules
+/etc/audit/audit.rules
+/etc/audit/auditd.conf
+/etc/audit/plugins.d
+/etc/audit/plugins.d/af_unix.conf
+/etc/audit/rules.d
+/etc/audit/rules.d/audit.rules
+/usr/bin/aulast
+/usr/bin/aulastlog
+/usr/bin/ausyscall
+/usr/bin/auvirt
+/usr/lib/.build-id
+/usr/lib/.build-id/0a
+/usr/lib/.build-id/0a/54a2aeda2ce2f0cc9c789ab94afde974ea3ddf
+/usr/lib/.build-id/15
+/usr/lib/.build-id/15/be5ccbbd0ba37fea823d161d849a3d48671c64
+/usr/lib/.build-id/2d
+/usr/lib/.build-id/2d/733d5160c5a1ef08df0c709fb7436df2e3a548
+/usr/lib/.build-id/3f
+/usr/lib/.build-id/3f/bf084e6e5e599ac11ef7055de93519681e0d78
+/usr/lib/.build-id/4a
+/usr/lib/.build-id/4a/0842df3b270ee02070f848d05b8c6a456f7e64
+/usr/lib/.build-id/4b
+/usr/lib/.build-id/4b/f99725734e3834085ca9078cf97988a5d63ded
+/usr/lib/.build-id/57
+/usr/lib/.build-id/57/32c733d13c22aa5737b7ca085ec59191ef385e
+/usr/lib/.build-id/cb
+/usr/lib/.build-id/cb/4d2ae2ccacd7d5bcd9629242ab76b0e780988a
+/usr/lib/.build-id/d7
+/usr/lib/.build-id/d7/58719c24909e850832714a422496ddb894b08a
+/usr/lib/systemd/system/auditd.service
+/usr/libexec/audit-functions
+/usr/libexec/initscripts/legacy-actions/auditd
+/usr/libexec/initscripts/legacy-actions/auditd/condrestart
+/usr/libexec/initscripts/legacy-actions/auditd/reload
+/usr/libexec/initscripts/legacy-actions/auditd/restart
+/usr/libexec/initscripts/legacy-actions/auditd/resume
+/usr/libexec/initscripts/legacy-actions/auditd/rotate
+/usr/libexec/initscripts/legacy-actions/auditd/state
+/usr/libexec/initscripts/legacy-actions/auditd/stop
+/usr/sbin/auditctl
+/usr/sbin/auditd
+/usr/sbin/augenrules
+/usr/sbin/aureport
+/usr/sbin/ausearch
+/usr/sbin/autrace
+/usr/share/audit
+/usr/share/audit/sample-rules
+/usr/share/audit/sample-rules/10-base-config.rules
+/usr/share/audit/sample-rules/10-no-audit.rules
+/usr/share/audit/sample-rules/11-loginuid.rules
+/usr/share/audit/sample-rules/12-cont-fail.rules
+/usr/share/audit/sample-rules/12-ignore-error.rules
+/usr/share/audit/sample-rules/20-dont-audit.rules
+/usr/share/audit/sample-rules/21-no32bit.rules
+/usr/share/audit/sample-rules/22-ignore-chrony.rules
+/usr/share/audit/sample-rules/23-ignore-filesystems.rules
+/usr/share/audit/sample-rules/30-nispom.rules
+/usr/share/audit/sample-rules/30-ospp-v42-1-create-failed.rules
+/usr/share/audit/sample-rules/30-ospp-v42-1-create-success.rules
+/usr/share/audit/sample-rules/30-ospp-v42-2-modify-failed.rules
+/usr/share/audit/sample-rules/30-ospp-v42-2-modify-success.rules
+/usr/share/audit/sample-rules/30-ospp-v42-3-access-failed.rules
+/usr/share/audit/sample-rules/30-ospp-v42-3-access-success.rules
+/usr/share/audit/sample-rules/30-ospp-v42-4-delete-failed.rules
+/usr/share/audit/sample-rules/30-ospp-v42-4-delete-success.rules
+/usr/share/audit/sample-rules/30-ospp-v42-5-perm-change-failed.rules
+/usr/share/audit/sample-rules/30-ospp-v42-5-perm-change-success.rules
+/usr/share/audit/sample-rules/30-ospp-v42-6-owner-change-failed.rules
+/usr/share/audit/sample-rules/30-ospp-v42-6-owner-change-success.rules
+/usr/share/audit/sample-rules/30-ospp-v42.rules
+/usr/share/audit/sample-rules/30-pci-dss-v31.rules
+/usr/share/audit/sample-rules/30-stig.rules
+/usr/share/audit/sample-rules/31-privileged.rules
+/usr/share/audit/sample-rules/32-power-abuse.rules
+/usr/share/audit/sample-rules/40-local.rules
+/usr/share/audit/sample-rules/41-containers.rules
+/usr/share/audit/sample-rules/42-injection.rules
+/usr/share/audit/sample-rules/43-module-load.rules
+/usr/share/audit/sample-rules/44-installers.rules
+/usr/share/audit/sample-rules/70-einval.rules
+/usr/share/audit/sample-rules/71-networking.rules
+/usr/share/audit/sample-rules/99-finalize.rules
+/usr/share/audit/sample-rules/README-rules
+/usr/share/doc/audit
+/usr/share/doc/audit/ChangeLog
+/usr/share/doc/audit/README
+/usr/share/doc/audit/auditd.cron
+/usr/share/licenses/audit
+/usr/share/licenses/audit/COPYING
+/usr/share/man/man5/auditd-plugins.5.gz
+/usr/share/man/man5/auditd.conf.5.gz
+/usr/share/man/man5/ausearch-expression.5.gz
+/usr/share/man/man7/audit.rules.7.gz
+/usr/share/man/man8/auditctl.8.gz
+/usr/share/man/man8/auditd.8.gz
+/usr/share/man/man8/augenrules.8.gz
+/usr/share/man/man8/aulast.8.gz
+/usr/share/man/man8/aulastlog.8.gz
+/usr/share/man/man8/aureport.8.gz
+/usr/share/man/man8/ausearch.8.gz
+/usr/share/man/man8/ausyscall.8.gz
+/usr/share/man/man8/autrace.8.gz
+/usr/share/man/man8/auvirt.8.gz
+/var/log/audit
+/var/run/auditd.state
+</code></pre>
+</section><section>
+<h3 id="miscaudit-package-1">misc(audit package)</h3>
+<pre><code># dnf search audit
+마지막 메타자료 만료확인 0:04:14 이전인: 2022년 09월 28일 (수) 오전 03시 03분 55초.
+=========================== 이름 &amp; 요약과 일치하는 항목: audit ============================
+audit.x86_64 : User space tools for kernel auditing
+audit.src : User space tools for kernel auditing
+audit-debuginfo.i686 : Debug information for package audit
+audit-debuginfo.x86_64 : Debug information for package audit
+audit-debugsource.i686 : Debug sources for package audit
+audit-debugsource.x86_64 : Debug sources for package audit
+audit-libs.x86_64 : Dynamic library for libaudit
+audit-libs.i686 : Dynamic library for libaudit
+audit-libs-debuginfo.i686 : Debug information for package audit-libs
+audit-libs-debuginfo.x86_64 : Debug information for package audit-libs
+audit-libs-devel.i686 : Header files for libaudit
+audit-libs-devel.x86_64 : Header files for libaudit
+pgaudit-debuginfo.x86_64 : Debug information for package pgaudit
+pgaudit-debugsource.x86_64 : Debug sources for package pgaudit
+python3-audit.x86_64 : Python3 bindings for libaudit
+python3-audit-debuginfo.i686 : Debug information for package python3-audit
+python3-audit-debuginfo.x86_64 : Debug information for package python3-audit
+rsyslog-mmaudit.x86_64 : Message modification module supporting Linux audit format
+rsyslog-mmaudit-debuginfo.x86_64 : Debug information for package rsyslog-mmaudit
+sos-audit.noarch : Audit use of some commands for support purposes
+=============================== 요약과 일치하는 항목: audit ===============================
+</code></pre>
+</section>
+    <section><pre><code class="language-bash"># ausearch -ui $UID --interpret
+----
+type=DAEMON_START msg=audit(2022년 09월 28일 01:42:53.647:2054) : op=start ver=3.0.7 format=enriched kernel=4.18.0-394.el8.x86_64 auid=unset pid=1014 uid=root ses=unset subj=system_u:system_r:auditd_t:s0 res=success 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 01:42:53.666:5) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=rpcbind comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 01:42:53.714:6) : proctitle=/sbin/auditctl -R /etc/audit/audit.rules 
+type=SYSCALL msg=audit(2022년 09월 28일 01:42:53.714:6) : arch=x86_64 syscall=sendto success=yes exit=60 a0=0x3 a1=0x7ffde2d79a90 a2=0x3c a3=0x0 items=0 ppid=1019 pid=1033 auid=unset uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=(none) ses=unset comm=auditctl exe=/usr/sbin/auditctl subj=system_u:system_r:unconfined_service_t:s0 key=(null) 
+type=CONFIG_CHANGE msg=audit(2022년 09월 28일 01:42:53.714:6) : op=set audit_backlog_limit=8192 old=64 auid=unset ses=unset subj=system_u:system_r:unconfined_service_t:s0 res=yes 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 01:42:53.731:7) : proctitle=/sbin/auditctl -R /etc/audit/audit.rules 
+type=SYSCALL msg=audit(2022년 09월 28일 01:42:53.731:7) : arch=x86_64 syscall=sendto success=yes exit=60 a0=0x3 a1=0x7ffde2d79a90 a2=0x3c a3=0x0 items=0 ppid=1019 pid=1033 auid=unset uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=(none) ses=unset comm=auditctl exe=/usr/sbin/auditctl subj=system_u:system_r:unconfined_service_t:s0 key=(null) 
+type=CONFIG_CHANGE msg=audit(2022년 09월 28일 01:42:53.731:7) : op=set audit_failure=1 old=1 auid=unset ses=unset subj=system_u:system_r:unconfined_service_t:s0 res=yes 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 01:42:53.734:8) : proctitle=/sbin/auditctl -R /etc/audit/audit.rules 
+type=SYSCALL msg=audit(2022년 09월 28일 01:42:53.734:8) : arch=x86_64 syscall=sendto success=yes exit=60 a0=0x3 a1=0x7ffde2d79a90 a2=0x3c a3=0x0 items=0 ppid=1019 pid=1033 auid=unset uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=(none) ses=unset comm=auditctl exe=/usr/sbin/auditctl subj=system_u:system_r:unconfined_service_t:s0 key=(null) 
+type=CONFIG_CHANGE msg=audit(2022년 09월 28일 01:42:53.734:8) : op=set audit_backlog_wait_time=60000 old=60000 auid=unset ses=unset subj=system_u:system_r:unconfined_service_t:s0 res=yes 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 01:42:53.755:9) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=auditd comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=SYSTEM_BOOT msg=audit(2022년 09월 28일 01:42:53.767:10) : pid=1040 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg=' comm=systemd-update-utmp exe=/usr/lib/systemd/systemd-update-utmp hostname=? addr=? terminal=? res=success' 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 01:42:53.771:11) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=systemd-update-utmp comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 01:42:54.173:12) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=ldconfig comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 01:42:54.205:13) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=systemd-update-done comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 01:42:54.216:14) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=irqbalance comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 01:42:56.750:76) : proctitle=/usr/sbin/ebtables-restore --noflush 
+type=SYSCALL msg=audit(2022년 09월 28일 01:42:56.750:76) : arch=x86_64 syscall=sendmsg success=yes exit=884 a0=0x3 a1=0x7ffec5f3a630 a2=0x0 a3=0x7ffec5f3a61c items=0 ppid=1157 pid=1518 auid=unset uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=(none) ses=unset comm=ebtables-restor exe=/usr/sbin/xtables-nft-multi subj=system_u:system_r:iptables_t:s0 key=(null) 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:56.750:76) : table=nat:29 family=bridge entries=3 op=nft_register_chain pid=1518 subj=system_u:system_r:iptables_t:s0 comm=ebtables-restor 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:56.750:76) : table=filter:29 family=bridge entries=3 op=nft_register_chain pid=1518 subj=system_u:system_r:iptables_t:s0 comm=ebtables-restor 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 01:42:56.755:77) : proctitle=/usr/libexec/platform-python -s /usr/sbin/firewalld --nofork --nopid 
+type=SYSCALL msg=audit(2022년 09월 28일 01:42:56.755:77) : arch=x86_64 syscall=sendmsg success=yes exit=172 a0=0x6 a1=0x7ffc55c4ce60 a2=0x0 a3=0x7ffc55c4bdac items=0 ppid=1 pid=1157 auid=unset uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=(none) ses=unset comm=firewalld exe=/usr/libexec/platform-python3.6 subj=system_u:system_r:firewalld_t:s0 key=(null) 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:56.755:77) : table=firewalld:30 family=inet entries=1 op=nft_register_table pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:56.755:77) : table=firewalld:30 family=ipv4 entries=1 op=nft_register_table pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:56.755:77) : table=firewalld:30 family=ipv6 entries=1 op=nft_register_table pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 01:42:56.798:79) : proctitle=/usr/libexec/platform-python -s /usr/sbin/firewalld --nofork --nopid 
+type=SYSCALL msg=audit(2022년 09월 28일 01:42:56.798:79) : arch=x86_64 syscall=sendmsg success=yes exit=32792 a0=0x6 a1=0x7ffc55c4ce60 a2=0x0 a3=0x7ffc55c4bdac items=0 ppid=1 pid=1157 auid=unset uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=(none) ses=unset comm=firewalld exe=/usr/libexec/platform-python3.6 subj=system_u:system_r:firewalld_t:s0 key=(null) 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:56.798:79) : table=firewalld:31 family=inet entries=199 op=nft_register_chain pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:56.798:79) : table=firewalld:31 family=ipv4 entries=54 op=nft_register_chain pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:56.798:79) : table=firewalld:31 family=ipv6 entries=54 op=nft_register_chain pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 01:42:56.871:78) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=libvirtd comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 01:42:57.255:80) : proctitle=/usr/sbin/iptables -w --table filter --new-chain LIBVIRT_INP 
+type=SYSCALL msg=audit(2022년 09월 28일 01:42:57.255:80) : arch=x86_64 syscall=sendmsg success=yes exit=128 a0=0x3 a1=0x7fffa8301bc0 a2=0x0 a3=0x7fffa8301bac items=0 ppid=1376 pid=1806 auid=unset uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=(none) ses=unset comm=iptables exe=/usr/sbin/xtables-nft-multi subj=system_u:system_r:iptables_t:s0-s0:c0.c1023 key=(null) 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 01:42:57.255:80) : table=filter:35 family=ipv4 entries=1 op=nft_register_chain pid=1806 subj=system_u:system_r:iptables_t:s0-s0:c0.c1023 comm=iptables 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 02:01:28.674:193) : proctitle=/usr/libexec/platform-python -s /usr/sbin/firewalld --nofork --nopid 
+type=SYSCALL msg=audit(2022년 09월 28일 02:01:28.674:193) : arch=x86_64 syscall=sendmsg success=yes exit=1880 a0=0x6 a1=0x7ffc55c4c400 a2=0x0 a3=0x7ffc55c4b34c items=0 ppid=1 pid=1157 auid=unset uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=(none) ses=unset comm=firewalld exe=/usr/libexec/platform-python3.6 subj=system_u:system_r:firewalld_t:s0 key=(null) 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 02:01:28.674:193) : table=firewalld:86 family=inet entries=4 op=nft_register_rule pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 02:01:28.674:193) : table=firewalld:86 family=ipv4 entries=2 op=nft_register_rule pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+type=NETFILTER_CFG msg=audit(2022년 09월 28일 02:01:28.674:193) : table=firewalld:86 family=ipv6 entries=2 op=nft_register_rule pid=1157 subj=system_u:system_r:firewalld_t:s0 comm=firewalld 
+----
+type=SYSTEM_RUNLEVEL msg=audit(2022년 09월 28일 02:57:59.212:146) : pid=2373 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='old-level=N new-level=5 comm=systemd-update-utmp exe=/usr/lib/systemd/systemd-update-utmp hostname=? addr=? terminal=? res=success' 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 02:57:59.214:147) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=systemd-update-utmp-runlevel comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=SERVICE_STOP msg=audit(2022년 09월 28일 02:57:59.214:148) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=systemd-update-utmp-runlevel comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=USER_AUTH msg=audit(2022년 09월 28일 02:58:04.001:149) : pid=2375 uid=root auid=unset ses=unset subj=system_u:system_r:xdm_t:s0-s0:c0.c1023 msg='op=PAM:authentication grantors=pam_usertype,pam_localuser,pam_unix,pam_gnome_keyring acct=ahnlab exe=/usr/libexec/gdm-session-worker hostname=localhost.localdomain addr=? terminal=/dev/tty1 res=success' 
+----
+type=USER_ACCT msg=audit(2022년 09월 28일 02:58:04.006:150) : pid=2375 uid=root auid=unset ses=unset subj=system_u:system_r:xdm_t:s0-s0:c0.c1023 msg='op=PAM:accounting grantors=pam_unix,pam_localuser acct=ahnlab exe=/usr/libexec/gdm-session-worker hostname=localhost.localdomain addr=? terminal=/dev/tty1 res=success' 
+----
+type=CRED_ACQ msg=audit(2022년 09월 28일 02:58:04.011:151) : pid=2375 uid=root auid=unset ses=unset subj=system_u:system_r:xdm_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_localuser,pam_unix,pam_gnome_keyring acct=ahnlab exe=/usr/libexec/gdm-session-worker hostname=localhost.localdomain addr=? terminal=/dev/tty1 res=success' 
+----
+type=LOGIN msg=audit(2022년 09월 28일 02:58:04.018:152) : pid=2375 uid=root subj=system_u:system_r:xdm_t:s0-s0:c0.c1023 old-auid=unset auid=ahnlab tty=(none) old-ses=4294967295 ses=2 res=yes 
+----
+type=PROCTITLE msg=audit(2022년 09월 28일 02:58:04.018:152) : proctitle=gdm-session-worker [pam/gdm-password] 
+type=SYSCALL msg=audit(2022년 09월 28일 02:58:04.018:152) : arch=x86_64 syscall=write success=yes exit=4 a0=0xa a1=0x7ffe1f2a26c0 a2=0x4 a3=0x0 items=0 ppid=1238 pid=2375 auid=ahnlab uid=root gid=ahnlab euid=root suid=root fsuid=root egid=ahnlab sgid=ahnlab fsgid=ahnlab tty=(none) ses=2 comm=gdm-session-wor exe=/usr/libexec/gdm-session-worker subj=system_u:system_r:xdm_t:s0-s0:c0.c1023 key=(null) 
+----
+type=USER_ROLE_CHANGE msg=audit(2022년 09월 28일 02:58:04.031:153) : pid=2375 uid=root auid=ahnlab ses=2 subj=system_u:system_r:xdm_t:s0-s0:c0.c1023 msg='pam: default-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 selected-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 exe=/usr/libexec/gdm-session-worker hostname=localhost.localdomain addr=? terminal=/dev/tty2 res=success' 
+----
+type=SERVICE_START msg=audit(2022년 09월 28일 02:58:04.063:154) : pid=1 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='unit=user-runtime-dir@1000 comm=systemd exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=USER_ACCT msg=audit(2022년 09월 28일 02:58:04.084:155) : pid=2387 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='op=PAM:accounting grantors=pam_unix acct=ahnlab exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=USER_ROLE_CHANGE msg=audit(2022년 09월 28일 02:58:04.084:156) : pid=2387 uid=root auid=unset ses=unset subj=system_u:system_r:init_t:s0 msg='pam: default-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 selected-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 exe=/usr/lib/systemd/systemd hostname=? addr=? terminal=? res=success' 
+----
+type=USER_LOGIN msg=audit(2022년 09월 28일 05:35:46.992:299) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=login id=ahnlab exe=/usr/sbin/sshd hostname=? addr=192.168.66.1 terminal=ssh res=success' 
+----
+type=USER_START msg=audit(2022년 09월 28일 05:35:46.992:300) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=login id=ahnlab exe=/usr/sbin/sshd hostname=? addr=192.168.66.1 terminal=ssh res=success' 
+----
+type=CRYPTO_KEY_USER msg=audit(2022년 09월 28일 05:35:47.006:301) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=server fp=SHA256:3b:04:1b:5b:09:fb:ec:42:8b:65:f7:08:59:1f:6d:40:16:2a:c1:71:2b:4d:e8:5f:c1:bf:4e:ae:6b:b3:af:a8 direction=? spid=7797 suid=ahnlab  exe=/usr/sbin/sshd hostname=? addr=? terminal=? res=success' 
+----
+type=CRYPTO_KEY_USER msg=audit(2022년 09월 28일 05:35:47.334:302) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=session fp=? direction=both spid=7794 suid=ahnlab rport=54041 laddr=192.168.66.130 lport=22  exe=/usr/sbin/sshd hostname=? addr=192.168.66.1 terminal=? res=success' 
+----
+type=CRYPTO_KEY_USER msg=audit(2022년 09월 28일 05:35:47.339:303) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=server fp=SHA256:3b:04:1b:5b:09:fb:ec:42:8b:65:f7:08:59:1f:6d:40:16:2a:c1:71:2b:4d:e8:5f:c1:bf:4e:ae:6b:b3:af:a8 direction=? spid=7794 suid=ahnlab  exe=/usr/sbin/sshd hostname=? addr=? terminal=? res=success' 
+----
+type=USER_END msg=audit(2022년 09월 28일 05:35:47.351:304) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:session_close grantors=pam_selinux,pam_loginuid,pam_selinux,pam_namespace,pam_keyinit,pam_keyinit,pam_limits,pam_systemd,pam_unix,pam_umask,pam_lastlog acct=ahnlab exe=/usr/sbin/sshd hostname=192.168.66.1 addr=192.168.66.1 terminal=ssh res=success' 
+----
+type=CRED_DISP msg=audit(2022년 09월 28일 05:35:47.352:305) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_localuser,pam_unix acct=ahnlab exe=/usr/sbin/sshd hostname=192.168.66.1 addr=192.168.66.1 terminal=ssh res=success' 
+----
+type=USER_END msg=audit(2022년 09월 28일 05:35:47.358:306) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=login id=ahnlab exe=/usr/sbin/sshd hostname=? addr=192.168.66.1 terminal=ssh res=success' 
+----
+type=USER_LOGOUT msg=audit(2022년 09월 28일 05:35:47.359:307) : pid=7789 uid=root auid=ahnlab ses=5 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=login id=ahnlab exe=/usr/sbin/sshd hostname=? addr=192.168.66.1 terminal=ssh res=success' 
+</code></pre>
 </section>
 
 </div>
@@ -230,6 +1347,10 @@ alt="Git Lens" width="400" height="300" /></a></p>
   
   
   <script type="text/javascript" src="/reveal-js/plugin/notes/notes.js"></script>
+
+
+
+
 
 
 
