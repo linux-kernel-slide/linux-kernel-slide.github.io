@@ -442,7 +442,64 @@ static int __init audit_init(void)
 </section><section>
 <h3 id="22-auditlog-로그에-찍히기까지">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
-<li><strong>struct common_audit_data</strong> : audit log 에서 사용할 data 구조체</li>
+<li>syscall_trace_enter -&gt; audit_syscall_entry 공통 훅
+<ul>
+<li><a href="https://elixir.bootlin.com/linux/latest/source/arch/arm64">arch/arm64/kernel/ptrace.c</a></li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-c">int syscall_trace_enter(struct pt_regs *regs)
+{
+	unsigned long flags = read_thread_flags();
+
+	if (flags &amp; (_TIF_SYSCALL_EMU | _TIF_SYSCALL_TRACE)) {
+		report_syscall(regs, PTRACE_SYSCALL_ENTER);
+		if (flags &amp; _TIF_SYSCALL_EMU)
+			return NO_SYSCALL;
+	}
+
+	/* Do the secure computing after ptrace; failures should be fast. */
+	if (secure_computing() == -1)
+		return NO_SYSCALL;
+
+	if (test_thread_flag(TIF_SYSCALL_TRACEPOINT))
+		trace_sys_enter(regs, regs-&gt;syscallno);
+
+	audit_syscall_entry(regs-&gt;syscallno, regs-&gt;orig_x0, regs-&gt;regs[1],
+			    regs-&gt;regs[2], regs-&gt;regs[3]);
+
+	return regs-&gt;syscallno;
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-1">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li>syscall_trace_exit -&gt; audit_syscall_exit 공통 훅
+<ul>
+<li><a href="https://elixir.bootlin.com/linux/latest/source/arch/arm64">arch/arm64/kernel/ptrace.c</a></li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-c">void syscall_trace_exit(struct pt_regs *regs)
+{
+	unsigned long flags = read_thread_flags();
+
+	audit_syscall_exit(regs);
+
+	if (flags &amp; _TIF_SYSCALL_TRACEPOINT)
+		trace_sys_exit(regs, syscall_get_return_value(current, regs));
+
+	if (flags &amp; (_TIF_SYSCALL_TRACE | _TIF_SINGLESTEP))
+		report_syscall(regs, PTRACE_SYSCALL_EXIT);
+
+	rseq_syscall(regs);
+}
+
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-2">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li><strong>struct common_audit_data</strong> : 공통 lsm audit log 을 위한 data 구조체</li>
 </ul>
 <pre><code class="language-c">/* Auxiliary data to use in generating the audit record. */
 struct common_audit_data {
@@ -465,7 +522,7 @@ struct common_audit_data {
 }
 </code></pre>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-1">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-3">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>common_lsm_audit()</strong> : Hook 에서 audit 하기 위해 사용할 함수</li>
 </ul>
@@ -505,7 +562,7 @@ void common_lsm_audit(struct common_audit_data *a,
 }
 </code></pre>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-2">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-4">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>audit_log_start()</strong> : struct audit_buffer 인스턴스를 만들어줍니다.</li>
 <li><strong>audit_log_end()</strong> : 만든 버퍼를 큐잉합니다.</li>
@@ -552,7 +609,7 @@ void audit_log(struct audit_context *ctx, gfp_t gfp_mask, int type,
 <li>로그를 만들기위한 버퍼를 사용하는 루틴을 확인합니다.</li>
 </ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-3">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-5">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>struct audit_context</strong> 를 가지고 <strong>struct audit_buffer</strong> 인스턴스를 만들어줍니다.</li>
 </ul>
@@ -645,7 +702,7 @@ struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 <li><strong>Hook 의 ctx -&gt; audit_context -&gt; audit_buffer</strong></li>
 </ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-4">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-6">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>struct audit_buffer</strong> 를 가지고 넷링크 통신을 위한 sk_buff 를 만들고, audit_queue 테일에 큐잉합니다.</li>
 </ul>
@@ -688,7 +745,7 @@ void audit_log_end(struct audit_buffer *ab)
 <li>queue the netlink packet and poke the kauditd thread</li>
 </ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-5">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-7">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li>kthread 에서는 irq context 밖에서 audit_queue 처리가 가능합니다!
 <ul>
@@ -782,7 +839,7 @@ main_queue:
 <li>netlink 기반 logger 구현 한다면 참고할 수 있는 좋은 코드네요!</li>
 </ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-6">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-8">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>kauditd_thread()</strong> 내부에서 보았던, 유저 스페이스로 netlink 소켓으로 패킷을 전달하는 부분입니다!</li>
 </ul>
@@ -859,7 +916,7 @@ retry:
 <li>큐잉한 audit_queue 에서 skb 를 get 하고, 이를 netlink 로 전달합니다.</li>
 </ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-7">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-9">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>struct audit_context</strong> 멤버를 슬쩍 볼까요! 자세한 설명은 생략!</li>
 </ul>

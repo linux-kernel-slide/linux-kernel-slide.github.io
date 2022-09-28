@@ -88,7 +88,64 @@ static int __init audit_init(void)
 
 ### 2.2. **audit.log** 로그에 찍히기까지
 
-- **struct common_audit_data** : audit log 에서 사용할 data 구조체
+- syscall_trace_enter -> audit_syscall_entry 공통 훅
+  - [arch/arm64/kernel/ptrace.c](https://elixir.bootlin.com/linux/latest/source/arch/arm64)
+
+```c
+int syscall_trace_enter(struct pt_regs *regs)
+{
+	unsigned long flags = read_thread_flags();
+
+	if (flags & (_TIF_SYSCALL_EMU | _TIF_SYSCALL_TRACE)) {
+		report_syscall(regs, PTRACE_SYSCALL_ENTER);
+		if (flags & _TIF_SYSCALL_EMU)
+			return NO_SYSCALL;
+	}
+
+	/* Do the secure computing after ptrace; failures should be fast. */
+	if (secure_computing() == -1)
+		return NO_SYSCALL;
+
+	if (test_thread_flag(TIF_SYSCALL_TRACEPOINT))
+		trace_sys_enter(regs, regs->syscallno);
+
+	audit_syscall_entry(regs->syscallno, regs->orig_x0, regs->regs[1],
+			    regs->regs[2], regs->regs[3]);
+
+	return regs->syscallno;
+}
+```
+
+---
+
+### 2.2. **audit.log** 로그에 찍히기까지
+
+- syscall_trace_exit -> audit_syscall_exit 공통 훅
+  - [arch/arm64/kernel/ptrace.c](https://elixir.bootlin.com/linux/latest/source/arch/arm64)
+
+```c
+void syscall_trace_exit(struct pt_regs *regs)
+{
+	unsigned long flags = read_thread_flags();
+
+	audit_syscall_exit(regs);
+
+	if (flags & _TIF_SYSCALL_TRACEPOINT)
+		trace_sys_exit(regs, syscall_get_return_value(current, regs));
+
+	if (flags & (_TIF_SYSCALL_TRACE | _TIF_SINGLESTEP))
+		report_syscall(regs, PTRACE_SYSCALL_EXIT);
+
+	rseq_syscall(regs);
+}
+
+```
+
+---
+
+### 2.2. **audit.log** 로그에 찍히기까지
+
+- **struct common_audit_data** : 공통 lsm audit log 을 위한 data 구조체
 
 ```c
 /* Auxiliary data to use in generating the audit record. */
