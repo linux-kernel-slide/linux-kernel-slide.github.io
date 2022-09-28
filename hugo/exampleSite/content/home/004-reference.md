@@ -38,10 +38,16 @@ Future roadmap (subject to change):
 
 ### 참고
 
+- [Steve Grubb(Redhat) - Linux Audit](https://people.redhat.com/sgrubb/audit/)
+- [Steve Grubb Blog - Security + Data Science](http://security-plus-data-science.blogspot.com/)
+- [Linux auditd for Threat Hunting [Part 1]](https://izyknows.medium.com/linux-auditd-for-threat-detection-d06c8b941505)
+- [Security hooks for Audit](https://docs.kernel.org/security/lsm-development.html)
 - [SLES 15-SP1 - Part VI The Linux Audit Framework](https://documentation.suse.com/sles/15-SP1/html/SLES-all/part-audit.html#)
 - [Audit and IDS - Red Hat People](https://people.redhat.com/sgrubb/audit/audit-ids.pdf)
 - [Tracking User and System activity with Oracle Linux Auditing](https://www.youtube.com/watch?v=w-XN9PGlMDc)
 - [Stop disabling SELinux](https://stopdisablingselinux.com/)
+
+---
 
 ### misc(audit package)
 

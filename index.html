@@ -77,7 +77,6 @@
 <li>1.1 큰 그림</li>
 <li>1.2 man</li>
 <li>1.3 audit 슈퍼 유저가 되기</li>
-<li>1.4 <strong>audit rule</strong> 포맷</li>
 </ul>
 </li>
 <li>
@@ -99,7 +98,7 @@
 </section><section>
 <h3 id="1-audit-을-어떻게-활용할까-">1. audit 을 어떻게 활용할까? 🤔</h3>
 <ul>
-<li>🤔 어떻게 증거를 남기지?
+<li>🤔 어떻게 증거(로그)를 남기면 좋을까요?
 <ul>
 <li>스토리지 서버 <em><code>/opt</code> 디렉토리 안에 중요한 파일을 누가 지우셨어욥!?</em></li>
 <li>컨테이너 안에 <em>이상한 소프트웨어가 자꾸 설치되요. 누가 설치한거죠..?</em></li>
@@ -121,12 +120,13 @@
 </ul>
 <img src="000-audit_components.png" alt="audit_components" width="600">
 <ul>
-<li>커널의 hook 을 통하여 획득한 audit_context 를 기반으로 auditd 와 netlink 소켓을 행동 로깅합니다.</li>
+<li>커널 스페이스의 audit lsm hook 로 ctx -&gt; audit_context -&gt; skb</li>
+<li>netlink 로 auditd 와 통신하며 행동 로깅 및 새로운 룰을 적용합니다.</li>
 </ul>
 </section><section>
 <h3 id="11-주요-특징">1.1 주요 특징</h3>
 <ul>
-<li>커널 프로세스로 상주 중인 kaudit 은 security/lsm_audit.c 의 Hook 을 사용하여 ctx 의 정보를 가져옵니다.</li>
+<li>커널 프로세스로 상주 중인 kaudit 은 <strong>security/lsm_audit.c</strong> Hook 을 사용하여 ctx 정보를 가져옵니다.</li>
 <li>auditd 가 올라오면서 <strong>audit.rules</strong> 파일을 읽어 정책을 적용합니다.</li>
 <li>auditctl 로 운영 중인 시스템에 적용합니다.</li>
 <li>아키텍쳐 지원 : arm, x86, s390 (32, 64 bit)
@@ -134,13 +134,14 @@
 <li><a href="https://github.com/linux-audit/audit-userspace/blob/v3.0.9/lib/aarch64_table.h">aarch64_table.h</a></li>
 </ul>
 </li>
-<li>리눅스 커널 시스템 콜 테이블 확장에 맞춰 후킹을 팔로우 업 합니다.
+<li>리눅스 커널 시스템 콜 테이블의 새로운 시스템 콜을 팔로우 업 합니다.
 <ul>
 <li>(예) <code>_S(280, &quot;bpf&quot;)</code> audit 3.0 BPF 시스템 콜 감사 정책 지원</li>
 <li>Add <a href="https://man7.org/linux/man-pages/man2/bpf.2.html">bpf syscall</a> command argument interpretation to auparse</li>
+<li>호스트 머신에서 virtual machine, container 감시 관련 feature 를 확장 중입니다.</li>
 </ul>
 </li>
-<li>audit 은 빨간 모자를 포함한 많은 서버 솔루션에서 <a href="https://ko.wikipedia.org/wiki/%EC%B9%A8%EC%9E%85_%ED%83%90%EC%A7%80_%EC%8B%9C%EC%8A%A4%ED%85%9C">침입 탐지 시스템(Intrusion Detection System)</a>으로 활용 중입니다.</li>
+<li>audit 은 빨간 모자의 안보가 중요한 서버 솔루션에서 <a href="https://ko.wikipedia.org/wiki/%EC%B9%A8%EC%9E%85_%ED%83%90%EC%A7%80_%EC%8B%9C%EC%8A%A4%ED%85%9C">침입 탐지 시스템(Intrusion Detection System)</a>으로 활용 중입니다.</li>
 </ul>
 </section><section>
 <h3 id="12-man">1.2 man</h3>
@@ -156,14 +157,7 @@
 <li>auditd.conf 설정을 바꾸어서 auditd 를 입맛대로 설정할 수 있어요!</li>
 </ul>
 </section><section>
-<h3 id="13-audit-슈퍼-유저가-되기---실행-확인해보기">1.3 audit 슈퍼 유저가 되기 - 실행 확인해보기</h3>
-<ul>
-<li>리눅스 커널의 kauditd</li>
-<li>유저 스페이스의 레드햇/데비안 계열 배포판 auditd 로 활성화 되어있습니다.</li>
-</ul>
-<pre><code># 레드햇 계열 # dnf install auditd
-# 데비안 계열 # apt install auditd
-</code></pre>
+<h3 id="13-audit-슈퍼-유저가-되기---실행-확인하기">1.3 audit 슈퍼 유저가 되기 - 실행 확인하기</h3>
 <pre><code class="language-bash"># service auditd status
 Redirecting to /bin/systemctl status auditd.service
 ● auditd.service - Security Auditing Service
@@ -188,6 +182,15 @@ Redirecting to /bin/systemctl status auditd.service
  9월 28 01:42:53 localhost.localdomain augenrules[1033]: backlog_wait_time 60000
  9월 28 01:42:53 localhost.localdomain augenrules[1033]: backlog_wait_time_actual 0
  9월 28 01:42:53 localhost.localdomain systemd[1]: Started Security Auditing Service.
+</code></pre>
+<ul>
+<li>리눅스 커널의 kauditd</li>
+<li>유저 스페이스의 레드햇/데비안 계열 배포판 auditd 로 활성화 되어있습니다.</li>
+</ul>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---실행-확인하기-1">1.3 audit 슈퍼 유저가 되기 - 실행 확인하기</h3>
+<pre><code># 레드햇 계열 # dnf install auditd
+# 데비안 계열 # apt install auditd
 </code></pre>
 </section><section>
 <h3 id="13-audit-슈퍼-유저가-되기---aureport">1.3 audit 슈퍼 유저가 되기 - aureport</h3>
@@ -215,7 +218,7 @@ Login Report
 3. 2022년 09월 28일 05:35:46 1000 192.168.66.1 ssh /usr/sbin/sshd yes 299
 </code></pre>
 </section><section>
-<h3 id="13-audit-슈퍼-유저가-되기---rule">1.3 audit 슈퍼 유저가 되기 - rule</h3>
+<h3 id="13-audit-슈퍼-유저가-되기---file-rule">1.3 audit 슈퍼 유저가 되기 - file rule</h3>
 <ul>
 <li>외부에서 /etc/ssh/sshd_config 파일을 읽거나 수정하려는 모든 시도를 남겨볼까요?</li>
 <li>해당 rule 을 sshd_config 키로 기록해보죠!</li>
@@ -232,15 +235,8 @@ time-&gt;Wed Sep 28 06:04:46 2022
 type=PATH msg=audit(1664312686.595:388): item=0 name=&quot;/etc/ssh/sshd_config&quot; inode=103004708 dev=fd:00 mode=0100600 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:etc_t:s0 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 cap_frootid=0
 type=SYSCALL msg=audit(1664312686.595:388): arch=c000003e syscall=257 success=yes exit=3 a0=ffffff9c a1=55dbad3cf050 a2=0 a3=0 items=1 ppid=7613 pid=53627 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=3 comm=&quot;vim&quot; exe=&quot;/usr/bin/vim&quot; subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=&quot;sshd_config&quot;
 </code></pre>
-<ul>
-<li>룰 예시를 조금 더 살펴볼려면? <strong><a href="https://github.com/linux-audit/audit-userspace/blob/v3.0.9/rules/30-stig.rules">30-stig.rules</a></strong>
-<ul>
-<li>Security Technical Implementation (STIG, 미국 국방성의 DISA 보안 구성 표준)에서 요구하는 조건을 충족할 수 있도록 구성된 Audit 규칙입니다.</li>
-</ul>
-</li>
-</ul>
 </section><section>
-<h3 id="13-audit-슈퍼-유저가-되기---rule-1">1.3 audit 슈퍼 유저가 되기 - rule</h3>
+<h3 id="13-audit-슈퍼-유저가-되기---record-type">1.3 audit 슈퍼 유저가 되기 - record type</h3>
 <ul>
 <li>type=SYSCALL
 <ul>
@@ -263,7 +259,7 @@ subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
 key=&quot;sshd_config&quot;
 </code></pre>
 </section><section>
-<h3 id="13-audit-슈퍼-유저가-되기---rule-2">1.3 audit 슈퍼 유저가 되기 - rule</h3>
+<h3 id="13-audit-슈퍼-유저가-되기---record-type-1">1.3 audit 슈퍼 유저가 되기 - record type</h3>
 <ul>
 <li>ppid=2686
 <ul>
@@ -283,14 +279,59 @@ key=&quot;sshd_config&quot;
 </li>
 </ul>
 <pre><code class="language-bash">type=SYSCALL msg=audit(1364481363.243:24287): arch=c000003e
-syscall=2 success=no exit=-13 
-a0=7fffd19c5592 a1=0 a2=7fffd19c4b50 a3=a items=1 
-ppid=2686 pid=3538 auid=1000 
-uid=1000 gid=1000 euid=1000 suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 
+syscall=2 success=no exit=-13 a0=7fffd19c5592 a1=0 a2=7fffd19c4b50 a3=a items=1 
+ppid=2686 pid=3538 auid=1000 uid=1000 gid=1000 euid=1000
+suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 
 tty=pts0 ses=1 comm=&quot;cat&quot; exe=&quot;/bin/cat&quot; 
-subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 
-key=&quot;sshd_config&quot;
+subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=&quot;sshd_config&quot;
 </code></pre>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---network-rule">1.3 audit 슈퍼 유저가 되기 - network rule</h3>
+<ul>
+<li>유입, 유출되는 네트워크 연결을 확인할 수 있습니다.
+<ul>
+<li>172.20.14.41:60822 에서 현재 localhost 로 접근을 확인 가능합니다!</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-bash"> $ auditctl -a always,exit -F arch=b64 -S accept,connect -F key=external-access
+</code></pre>
+<pre><code class="language-bash">type=PROCTITLE msg=audit(2022년 08월 02일 09:47:19.345:372385) : 
+proctitle=/usr/sbin/lighttpd -f /etc/lighttpd/lighttpd.conf
+type=SOCKADDR msg=audit(2022년 08월 02일 09:47:19.345:372385) : 
+saddr={ fam=inet laddr=172.20.14.41 lport=60822 }
+type=SYSCALL msg=audit(2022년 08월 02일 09:47:19.345:372385) : 
+arch=x86_64 syscall=accept success=yes exit=11 
+a0=0x4 a1=0x7fffffffe870 a2=0x7fffffffe844 a3=0x3e8 
+items=0 ppid=1 pid=22267 auid=unset uid=lighttpd gid=lighttpd 
+euid=lighttpd suid=lighttpd fsuid=lighttpd egid=lighttpd sgid=lighttpd 
+fsgid=lighttpd tty=(none) ses=unset comm=lighttpd 
+exe=/usr/sbin/lighttpd key=my_accept
+</code></pre>
+</section><section>
+<h3 id="13-audit-슈퍼-유저가-되기---process-rule">1.3 audit 슈퍼 유저가 되기 - process rule</h3>
+<ul>
+<li>일반 사용자의 root로 권한 상승 시도를 확인해볼까요?</li>
+</ul>
+<pre><code class="language-bash"> $ auditctl -a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=10.2.5.b-elevated-privs-setuid
+</code></pre>
+<pre><code class="language-bash">type=SYSCALL msg=audit(1659428449.377:378871): arch=c000003e
+syscall=59 success=yes exit=0 a0=6f4f60 a1=6fa4b0 a2=822900 a3=7fffffffe260
+items=2 ppid=14078 pid=15495 auid=1052 uid=1052 gid=1052
+euid=0 suid=0 fsuid=0 egid=1052 sgid=1052 fsgid=1052
+tty=pts8 ses=26782 comm=&quot;su&quot; exe=&quot;/usr/bin/su&quot;
+key=&quot;10.2.5.b-elevated-privs-setuid&quot; 
+---
+type=USER_AUTH msg=audit(1659428456.960:378872): pid=15495 uid=1052 auid=1052 ses=26782
+msg='op=PAM:authentication grantors=pam_faillock,pam_unix acct=&quot;root&quot; exe=&quot;/usr/bin/su&quot; hostname=localhost.localdomain addr=? terminal=pts/8 res=success'
+</code></pre>
+<ul>
+<li>이외에도 시스템 룰 예시를 조금 더 살펴볼려면? <strong><a href="https://github.com/linux-audit/audit-userspace/blob/v3.0.9/rules/30-stig.rules">30-stig.rules</a></strong> 참고!
+<ul>
+<li>Security Technical Implementation (STIG, 미국 국방성의 DISA 보안 구성 표준)에서 요구하는 조건을 충족할 수 있도록 구성된 Audit 규칙입니다.</li>
+</ul>
+</li>
+</ul>
 </section><section>
 <h3 id="13-audit-슈퍼-유저가-되기---config">1.3 audit 슈퍼 유저가 되기 - config</h3>
 <p>기본 설정은 아래와 같이 확인 할 수 있습니다.</p>
@@ -326,13 +367,6 @@ key=&quot;sshd_config&quot;
 </ul>
 </section><section>
 <h3 id="21-kaduit-언제-어떻게-초기화-될까요">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
-<ul>
-<li><strong>kernel/audit.c</strong>
-<ul>
-<li><strong>postcore_initcall(audit_init);</strong></li>
-</ul>
-</li>
-</ul>
 <pre><code>-&gt; arch_call_rest_init()
   -&gt; rest_init()
     -&gt; pid = kernel_thread(kernel_init, NULL, CLONE_FS);
@@ -344,33 +378,31 @@ key=&quot;sshd_config&quot;
 <ul>
 <li>do_initcalls() 내의 Linux 커널 부팅 중 초기화 호출 상대적 순서를 살펴보면, 3번째에 해당하는 것을 볼 수 있습니다.
 <ul>
-<li>early_initcall()</li>
-<li>core_initcall()</li>
-<li>postcore_initcall()</li>
+<li>early_initcall(), core_initcall()</li>
+<li><strong>postcore_initcall()</strong> → <strong>postcore_initcall(audit_init);</strong></li>
 <li>arch_initcall(), subsys_initcall(), fs_initcall(), device_initcall()</li>
 </ul>
 </li>
 </ul>
 </section><section>
 <h3 id="21-kaduit-언제-어떻게-초기화-될까요-1">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
-<pre><code># dmesg | grep audit
+<pre><code class="language-bash"># dmesg | grep audit
 [    0.215458] audit: initializing netlink subsys (disabled)
 [    0.215500] audit: type=2000 audit(1664301355.215:1): state=initialized audit_enabled=0 res=1
 [    7.430702] audit: type=1404 audit(1664301363.005:2): enforcing=1 old_enforcing=0 auid=4294967295 ses=4294967295 enabled=1 old-enabled=1 lsm=selinux res=1
 [    7.786790] audit: type=1403 audit(1664301363.360:3): auid=4294967295 ses=4294967295 lsm=selinux res=1
 </code></pre>
-</section><section>
-<h3 id="21-kaduit-언제-어떻게-초기화-될까요-2">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
-<pre><code class="language-c">postcore_initcall(audit_init);
+<pre><code class="language-bash">$ ps -ef | grep audit
+root          69       2  0 09:29 ?        00:00:00 [kauditd]
+root        1038       1  0 09:29 ?        00:00:00 /sbin/auditd
 </code></pre>
 </section><section>
-<h3 id="21-kaduit-언제-어떻게-초기화-될까요-3">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
+<h3 id="21-kaduit-언제-어떻게-초기화-될까요-2">2.1. kaduit 언제 어떻게 초기화 될까요?</h3>
 <ul>
 <li><strong>audit_init()</strong> 다음 항목에 주목해서 보면 어떨까요?
 <ul>
-<li>audit_queue</li>
-<li>kauditd_thread()</li>
-<li>audit_log()</li>
+<li>skb_queue 자료구조 audit_queue</li>
+<li>kauditd_thread(), audit_log()</li>
 </ul>
 </li>
 </ul>
@@ -392,15 +424,11 @@ static int __init audit_init(void)
 
 	for (i = 0; i &lt; AUDIT_INODE_BUCKETS; i++)
 		INIT_LIST_HEAD(&amp;audit_inode_hash[i]);
-    // ...
+	// ...
 	audit_initialized = AUDIT_INITIALIZED;
 
 	kauditd_task = kthread_run(kauditd_thread, NULL, &quot;kauditd&quot;);
-	if (IS_ERR(kauditd_task)) {
-		int err = PTR_ERR(kauditd_task);
-		panic(&quot;audit: failed to start the kauditd thread (%d)\n&quot;, err);
-	}
-
+	// ...
 	audit_log(NULL, GFP_KERNEL, AUDIT_KERNEL,
 		&quot;state=initialized audit_enabled=%u res=1&quot;,
 		 audit_enabled);
@@ -408,8 +436,76 @@ static int __init audit_init(void)
 	return 0;
 }
 </code></pre>
+<ul>
+<li>큐 자료구조 초기화 및 kauditd 커널 스레드의 생성을 확인할 수 있습니다.</li>
+</ul>
 </section><section>
 <h3 id="22-auditlog-로그에-찍히기까지">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li><strong>struct common_audit_data</strong> : audit log 에서 사용할 data 구조체</li>
+</ul>
+<pre><code class="language-c">/* Auxiliary data to use in generating the audit record. */
+struct common_audit_data {
+	union 	{
+		struct path path;
+		struct dentry *dentry;
+		struct inode *inode;
+		struct lsm_network_audit *net;
+		int cap;
+		int ipc_id;
+		struct task_struct *tsk;
+		char *kmod_name;
+		struct lsm_ioctlop_audit *op;
+		struct file *file;
+		struct lsm_ibpkey_audit *ibpkey;
+		struct lsm_ibendport_audit *ibendport;
+		int reason;
+		const char *anonclass;
+	} u;
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-1">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li><strong>common_lsm_audit()</strong> : Hook 에서 audit 하기 위해 사용할 함수</li>
+</ul>
+<pre><code class="language-c">/**
+ * common_lsm_audit - generic LSM auditing function
+ * @a:  auxiliary audit data
+ * @pre_audit: lsm-specific pre-audit callback
+ * @post_audit: lsm-specific post-audit callback
+ *
+ * setup the audit buffer for common security information
+ * uses callback to print LSM specific information
+ */
+void common_lsm_audit(struct common_audit_data *a,
+	void (*pre_audit)(struct audit_buffer *, void *),
+	void (*post_audit)(struct audit_buffer *, void *))
+{
+	struct audit_buffer *ab;
+
+	if (a == NULL)
+		return;
+	/* we use GFP_ATOMIC so we won't sleep */
+	ab = audit_log_start(audit_context(), GFP_ATOMIC | __GFP_NOWARN,
+			     AUDIT_AVC);
+
+	if (ab == NULL)
+		return;
+
+	if (pre_audit)
+		pre_audit(ab, a);
+
+	dump_common_audit_data(ab, a);
+
+	if (post_audit)
+		post_audit(ab, a);
+
+	audit_log_end(ab);
+}
+</code></pre>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-2">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>audit_log_start()</strong> : struct audit_buffer 인스턴스를 만들어줍니다.</li>
 <li><strong>audit_log_end()</strong> : 만든 버퍼를 큐잉합니다.</li>
@@ -452,8 +548,11 @@ void audit_log(struct audit_context *ctx, gfp_t gfp_mask, int type,
 	}
 }
 </code></pre>
+<ul>
+<li>로그를 만들기위한 버퍼를 사용하는 루틴을 확인합니다.</li>
+</ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-1">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-3">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>struct audit_context</strong> 를 가지고 <strong>struct audit_buffer</strong> 인스턴스를 만들어줍니다.</li>
 </ul>
@@ -542,8 +641,11 @@ struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 	return ab;
 }
 </code></pre>
+<ul>
+<li><strong>Hook 의 ctx -&gt; audit_context -&gt; audit_buffer</strong></li>
+</ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-2">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-4">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li><strong>struct audit_buffer</strong> 를 가지고 넷링크 통신을 위한 sk_buff 를 만들고, audit_queue 테일에 큐잉합니다.</li>
 </ul>
@@ -582,8 +684,11 @@ void audit_log_end(struct audit_buffer *ab)
 	audit_buffer_free(ab);
 }
 </code></pre>
+<ul>
+<li>queue the netlink packet and poke the kauditd thread</li>
+</ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-3">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-5">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
 <li>kthread 에서는 irq context 밖에서 audit_queue 처리가 가능합니다!
 <ul>
@@ -673,8 +778,14 @@ main_queue:
 	return 0;
 }
 </code></pre>
+<ul>
+<li>netlink 기반 logger 구현 한다면 참고할 수 있는 좋은 코드네요!</li>
+</ul>
 </section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-4">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<h3 id="22-auditlog-로그에-찍히기까지-6">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li><strong>kauditd_thread()</strong> 내부에서 보았던, 유저 스페이스로 netlink 소켓으로 패킷을 전달하는 부분입니다!</li>
+</ul>
 <pre><code class="language-c">/**
  * kauditd_send_queue - Helper for kauditd_thread to flush skb queues
  * @sk: the sending sock
@@ -744,10 +855,13 @@ retry:
 	return (rc &gt;= 0 ? 0 : rc);
 }
 </code></pre>
-</section><section>
-<h3 id="22-auditlog-로그에-찍히기까지-5">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
 <ul>
-<li>The per-task audit context.</li>
+<li>큐잉한 audit_queue 에서 skb 를 get 하고, 이를 netlink 로 전달합니다.</li>
+</ul>
+</section><section>
+<h3 id="22-auditlog-로그에-찍히기까지-7">2.2. <strong>audit.log</strong> 로그에 찍히기까지</h3>
+<ul>
+<li><strong>struct audit_context</strong> 멤버를 슬쩍 볼까요! 자세한 설명은 생략!</li>
 </ul>
 <pre><code class="language-c">/* The per-task audit context. */
 struct audit_context {
@@ -861,6 +975,9 @@ struct audit_context {
 	struct audit_proctitle proctitle;
 };
 </code></pre>
+<ul>
+<li>The per-task audit context.</li>
+</ul>
 <pre><code class="language-c">static inline void audit_set_context(struct task_struct *task, struct audit_context *ctx)
 {
 	task-&gt;audit_context = ctx;
@@ -871,6 +988,7 @@ static inline struct audit_context *audit_context(void)
 	return current-&gt;audit_context;
 }
 </code></pre>
+<p>&ndash; task_struct 에 audit_context 멤버가 있습니다.</p>
 </section><section>
 <h3 id="23-audit-rule-을-어떻게-로드할까">2.3. audit rule 을 어떻게 로드할까?</h3>
 <ul>
@@ -915,6 +1033,9 @@ static void audit_receive(struct sk_buff  *skb)
 	while (nlmsg_ok(nlh, len)) {
 		err = audit_receive_msg(skb, nlh);
 </code></pre>
+<ul>
+<li>룰은 위의 로직을 통해서 유저에서 커널로 올라옴을 확인합니다!</li>
+</ul>
 </section>
     <section><h3 id="2-유저-스페이스-auditd-콤포넌트-분석">2. 유저 스페이스 auditd 콤포넌트 분석!</h3>
 <ul>
@@ -1035,11 +1156,16 @@ int main() {
 </section><section>
 <h3 id="참고">참고</h3>
 <ul>
+<li><a href="https://people.redhat.com/sgrubb/audit/">Steve Grubb(Redhat) - Linux Audit</a></li>
+<li><a href="http://security-plus-data-science.blogspot.com/">Steve Grubb Blog - Security + Data Science</a></li>
+<li><a href="https://izyknows.medium.com/linux-auditd-for-threat-detection-d06c8b941505">Linux auditd for Threat Hunting [Part 1]</a></li>
+<li><a href="https://docs.kernel.org/security/lsm-development.html">Security hooks for Audit</a></li>
 <li><a href="https://documentation.suse.com/sles/15-SP1/html/SLES-all/part-audit.html#">SLES 15-SP1 - Part VI The Linux Audit Framework</a></li>
 <li><a href="https://people.redhat.com/sgrubb/audit/audit-ids.pdf">Audit and IDS - Red Hat People</a></li>
 <li><a href="https://www.youtube.com/watch?v=w-XN9PGlMDc">Tracking User and System activity with Oracle Linux Auditing</a></li>
 <li><a href="https://stopdisablingselinux.com/">Stop disabling SELinux</a></li>
 </ul>
+</section><section>
 <h3 id="miscaudit-package">misc(audit package)</h3>
 <pre><code># rpm -ql audit
 /etc/audit
@@ -1178,7 +1304,8 @@ sos-audit.noarch : Audit use of some commands for support purposes
 =============================== 요약과 일치하는 항목: audit ===============================
 </code></pre>
 </section>
-    <section><pre><code class="language-bash"># ausearch -ui $UID --interpret
+    <section><p>유저 UID 를 통한 확인 방법</p>
+<pre><code class="language-bash"># ausearch -ui $UID --interpret
 ----
 type=DAEMON_START msg=audit(2022년 09월 28일 01:42:53.647:2054) : op=start ver=3.0.7 format=enriched kernel=4.18.0-394.el8.x86_64 auid=unset pid=1014 uid=root ses=unset subj=system_u:system_r:auditd_t:s0 res=success 
 ----

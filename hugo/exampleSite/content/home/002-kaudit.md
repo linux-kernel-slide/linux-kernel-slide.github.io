@@ -10,9 +10,6 @@ weight = 20
 
 ### 2.1. kaduit 언제 어떻게 초기화 될까요?
 
-- **kernel/audit.c** 
-  - **postcore_initcall(audit_init);**
-
 ```
 -> arch_call_rest_init()
   -> rest_init()
@@ -24,29 +21,25 @@ weight = 20
 ```
 
 - do_initcalls() 내의 Linux 커널 부팅 중 초기화 호출 상대적 순서를 살펴보면, 3번째에 해당하는 것을 볼 수 있습니다.
-  - early_initcall()
-  - core_initcall()
-  - postcore_initcall()
+  - early_initcall(), core_initcall()
+  - **postcore_initcall()** → **postcore_initcall(audit_init);**
   - arch_initcall(), subsys_initcall(), fs_initcall(), device_initcall()
 
 ---
 
 ### 2.1. kaduit 언제 어떻게 초기화 될까요?
 
-```
+```bash
 # dmesg | grep audit
 [    0.215458] audit: initializing netlink subsys (disabled)
 [    0.215500] audit: type=2000 audit(1664301355.215:1): state=initialized audit_enabled=0 res=1
 [    7.430702] audit: type=1404 audit(1664301363.005:2): enforcing=1 old_enforcing=0 auid=4294967295 ses=4294967295 enabled=1 old-enabled=1 lsm=selinux res=1
 [    7.786790] audit: type=1403 audit(1664301363.360:3): auid=4294967295 ses=4294967295 lsm=selinux res=1
 ```
-
----
-
-### 2.1. kaduit 언제 어떻게 초기화 될까요?
-
-```c
-postcore_initcall(audit_init);
+```bash
+$ ps -ef | grep audit
+root          69       2  0 09:29 ?        00:00:00 [kauditd]
+root        1038       1  0 09:29 ?        00:00:00 /sbin/auditd
 ```
 
 ---
@@ -54,9 +47,8 @@ postcore_initcall(audit_init);
 ### 2.1. kaduit 언제 어떻게 초기화 될까요?
 
 - **audit_init()** 다음 항목에 주목해서 보면 어떨까요?
-  - audit_queue
-  - kauditd_thread()
-  - audit_log()
+  - skb_queue 자료구조 audit_queue
+  - kauditd_thread(), audit_log()
 
 ```c
 /* Initialize audit support at boot time. */
@@ -77,20 +69,89 @@ static int __init audit_init(void)
 
 	for (i = 0; i < AUDIT_INODE_BUCKETS; i++)
 		INIT_LIST_HEAD(&audit_inode_hash[i]);
-    // ...
+	// ...
 	audit_initialized = AUDIT_INITIALIZED;
 
 	kauditd_task = kthread_run(kauditd_thread, NULL, "kauditd");
-	if (IS_ERR(kauditd_task)) {
-		int err = PTR_ERR(kauditd_task);
-		panic("audit: failed to start the kauditd thread (%d)\n", err);
-	}
-
+	// ...
 	audit_log(NULL, GFP_KERNEL, AUDIT_KERNEL,
 		"state=initialized audit_enabled=%u res=1",
 		 audit_enabled);
 
 	return 0;
+}
+```
+
+ - 큐 자료구조 초기화 및 kauditd 커널 스레드의 생성을 확인할 수 있습니다.
+
+---
+
+### 2.2. **audit.log** 로그에 찍히기까지
+
+- **struct common_audit_data** : audit log 에서 사용할 data 구조체
+
+```c
+/* Auxiliary data to use in generating the audit record. */
+struct common_audit_data {
+	union 	{
+		struct path path;
+		struct dentry *dentry;
+		struct inode *inode;
+		struct lsm_network_audit *net;
+		int cap;
+		int ipc_id;
+		struct task_struct *tsk;
+		char *kmod_name;
+		struct lsm_ioctlop_audit *op;
+		struct file *file;
+		struct lsm_ibpkey_audit *ibpkey;
+		struct lsm_ibendport_audit *ibendport;
+		int reason;
+		const char *anonclass;
+	} u;
+}
+```
+
+---
+
+### 2.2. **audit.log** 로그에 찍히기까지
+
+- **common_lsm_audit()** : Hook 에서 audit 하기 위해 사용할 함수
+
+```c
+/**
+ * common_lsm_audit - generic LSM auditing function
+ * @a:  auxiliary audit data
+ * @pre_audit: lsm-specific pre-audit callback
+ * @post_audit: lsm-specific post-audit callback
+ *
+ * setup the audit buffer for common security information
+ * uses callback to print LSM specific information
+ */
+void common_lsm_audit(struct common_audit_data *a,
+	void (*pre_audit)(struct audit_buffer *, void *),
+	void (*post_audit)(struct audit_buffer *, void *))
+{
+	struct audit_buffer *ab;
+
+	if (a == NULL)
+		return;
+	/* we use GFP_ATOMIC so we won't sleep */
+	ab = audit_log_start(audit_context(), GFP_ATOMIC | __GFP_NOWARN,
+			     AUDIT_AVC);
+
+	if (ab == NULL)
+		return;
+
+	if (pre_audit)
+		pre_audit(ab, a);
+
+	dump_common_audit_data(ab, a);
+
+	if (post_audit)
+		post_audit(ab, a);
+
+	audit_log_end(ab);
 }
 ```
 
@@ -142,6 +203,8 @@ void audit_log(struct audit_context *ctx, gfp_t gfp_mask, int type,
 	}
 }
 ```
+
+ - 로그를 만들기위한 버퍼를 사용하는 루틴을 확인합니다.
 
 ---
 
@@ -236,6 +299,8 @@ struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 }
 ```
 
+ - **Hook 의 ctx -> audit_context -> audit_buffer**
+
 ---
 
 ### 2.2. **audit.log** 로그에 찍히기까지
@@ -278,6 +343,8 @@ void audit_log_end(struct audit_buffer *ab)
 	audit_buffer_free(ab);
 }
 ```
+
+- queue the netlink packet and poke the kauditd thread
 
 ---
 
@@ -370,9 +437,13 @@ main_queue:
 }
 ```
 
+- netlink 기반 logger 구현 한다면 참고할 수 있는 좋은 코드네요!
+
 ---
 
 ### 2.2. **audit.log** 로그에 찍히기까지
+
+- **kauditd_thread()** 내부에서 보았던, 유저 스페이스로 netlink 소켓으로 패킷을 전달하는 부분입니다!
 
 ```c
 /**
@@ -445,11 +516,13 @@ retry:
 }
 ```
 
+- 큐잉한 audit_queue 에서 skb 를 get 하고, 이를 netlink 로 전달합니다.
+
 ---
 
 ### 2.2. **audit.log** 로그에 찍히기까지
 
-- The per-task audit context.
+- **struct audit_context** 멤버를 슬쩍 볼까요! 자세한 설명은 생략!
 
 ```c
 /* The per-task audit context. */
@@ -565,6 +638,8 @@ struct audit_context {
 };
 ```
 
+- The per-task audit context.
+
 ```c
 static inline void audit_set_context(struct task_struct *task, struct audit_context *ctx)
 {
@@ -576,6 +651,8 @@ static inline struct audit_context *audit_context(void)
 	return current->audit_context;
 }
 ```
+
+-- task_struct 에 audit_context 멤버가 있습니다.
 
 ---
 
@@ -626,3 +703,5 @@ static void audit_receive(struct sk_buff  *skb)
 	while (nlmsg_ok(nlh, len)) {
 		err = audit_receive_msg(skb, nlh);
 ```
+
+- 룰은 위의 로직을 통해서 유저에서 커널로 올라옴을 확인합니다!

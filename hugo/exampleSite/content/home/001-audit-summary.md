@@ -8,7 +8,6 @@ weight = 10
     - 1.1 큰 그림
     - 1.2 man
     - 1.3 audit 슈퍼 유저가 되기
-    - 1.4 **audit rule** 포맷
 
 - 2. 리눅스 커널 audit 내부 구조 분석!
     - 2.1. 언제 어떻게 초기화 되는가?
@@ -21,7 +20,7 @@ weight = 10
 
 ### 1. audit 을 어떻게 활용할까? 🤔
 
-- 🤔 어떻게 증거를 남기지?
+- 🤔 어떻게 증거(로그)를 남기면 좋을까요?
   - 스토리지 서버 *`/opt` 디렉토리 안에 중요한 파일을 누가 지우셨어욥!?*
   - 컨테이너 안에 *이상한 소프트웨어가 자꾸 설치되요. 누가 설치한거죠..?*
   - 사내 *소스 서버에 자꾸 이상한 IP 가 접근합니다. 이러다가 전부 DRM 걸리거나 소스 콸콸콸 유출 아니겠죠?!*
@@ -44,21 +43,23 @@ weight = 10
 
 <img src="000-audit_components.png" alt="audit_components" width="600">
 
-- 커널의 hook 을 통하여 획득한 audit_context 를 기반으로 auditd 와 netlink 소켓을 행동 로깅합니다.
+- 커널 스페이스의 audit lsm hook 로 ctx -> audit_context -> skb
+- netlink 로 auditd 와 통신하며 행동 로깅 및 새로운 룰을 적용합니다.
 
 ---
 
 ### 1.1 주요 특징
 
-- 커널 프로세스로 상주 중인 kaudit 은 security/lsm_audit.c 의 Hook 을 사용하여 ctx 의 정보를 가져옵니다.
+- 커널 프로세스로 상주 중인 kaudit 은 **security/lsm_audit.c** Hook 을 사용하여 ctx 정보를 가져옵니다.
 - auditd 가 올라오면서 **audit.rules** 파일을 읽어 정책을 적용합니다.
 - auditctl 로 운영 중인 시스템에 적용합니다.
 - 아키텍쳐 지원 : arm, x86, s390 (32, 64 bit)
   - [aarch64_table.h](https://github.com/linux-audit/audit-userspace/blob/v3.0.9/lib/aarch64_table.h)
-- 리눅스 커널 시스템 콜 테이블 확장에 맞춰 후킹을 팔로우 업 합니다.
+- 리눅스 커널 시스템 콜 테이블의 새로운 시스템 콜을 팔로우 업 합니다.
     - (예) `_S(280, "bpf")` audit 3.0 BPF 시스템 콜 감사 정책 지원
     - Add [bpf syscall](https://man7.org/linux/man-pages/man2/bpf.2.html) command argument interpretation to auparse
-- audit 은 빨간 모자를 포함한 많은 서버 솔루션에서 [침입 탐지 시스템(Intrusion Detection System)](https://ko.wikipedia.org/wiki/침입_탐지_시스템)으로 활용 중입니다.
+    - 호스트 머신에서 virtual machine, container 감시 관련 feature 를 확장 중입니다.
+- audit 은 빨간 모자의 안보가 중요한 서버 솔루션에서 [침입 탐지 시스템(Intrusion Detection System)](https://ko.wikipedia.org/wiki/침입_탐지_시스템)으로 활용 중입니다.
 
 ---
 
@@ -73,14 +74,7 @@ weight = 10
 
 ---
 
-### 1.3 audit 슈퍼 유저가 되기 - 실행 확인해보기
-
-- 리눅스 커널의 kauditd
-- 유저 스페이스의 레드햇/데비안 계열 배포판 auditd 로 활성화 되어있습니다.
-```
-# 레드햇 계열 # dnf install auditd
-# 데비안 계열 # apt install auditd
-```
+### 1.3 audit 슈퍼 유저가 되기 - 실행 확인하기
 
 ```bash
 # service auditd status
@@ -107,6 +101,18 @@ Redirecting to /bin/systemctl status auditd.service
  9월 28 01:42:53 localhost.localdomain augenrules[1033]: backlog_wait_time 60000
  9월 28 01:42:53 localhost.localdomain augenrules[1033]: backlog_wait_time_actual 0
  9월 28 01:42:53 localhost.localdomain systemd[1]: Started Security Auditing Service.
+```
+
+- 리눅스 커널의 kauditd
+- 유저 스페이스의 레드햇/데비안 계열 배포판 auditd 로 활성화 되어있습니다.
+
+---
+
+### 1.3 audit 슈퍼 유저가 되기 - 실행 확인하기
+
+```
+# 레드햇 계열 # dnf install auditd
+# 데비안 계열 # apt install auditd
 ```
 
 ---
@@ -143,7 +149,7 @@ Login Report
 
 ---
 
-### 1.3 audit 슈퍼 유저가 되기 - rule
+### 1.3 audit 슈퍼 유저가 되기 - file rule
 
 - 외부에서 /etc/ssh/sshd_config 파일을 읽거나 수정하려는 모든 시도를 남겨볼까요? 
 - 해당 rule 을 sshd_config 키로 기록해보죠!
@@ -164,12 +170,9 @@ type=PATH msg=audit(1664312686.595:388): item=0 name="/etc/ssh/sshd_config" inod
 type=SYSCALL msg=audit(1664312686.595:388): arch=c000003e syscall=257 success=yes exit=3 a0=ffffff9c a1=55dbad3cf050 a2=0 a3=0 items=1 ppid=7613 pid=53627 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=3 comm="vim" exe="/usr/bin/vim" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="sshd_config"
 ```
 
-- 룰 예시를 조금 더 살펴볼려면? **[30-stig.rules](https://github.com/linux-audit/audit-userspace/blob/v3.0.9/rules/30-stig.rules)**
-  - Security Technical Implementation (STIG, 미국 국방성의 DISA 보안 구성 표준)에서 요구하는 조건을 충족할 수 있도록 구성된 Audit 규칙입니다. 
-
 ---
 
-### 1.3 audit 슈퍼 유저가 되기 - rule
+### 1.3 audit 슈퍼 유저가 되기 - record type
 
 - type=SYSCALL
   - type 필드에는 레코드 유형이 포함됩니다. 이 예제에서 SYSCALL 값은 커널에 대한 시스템 호출에 의해 이 레코드가 트리거되었음을 지정합니다.
@@ -189,7 +192,7 @@ key="sshd_config"
 
 ---
 
-### 1.3 audit 슈퍼 유저가 되기 - rule
+### 1.3 audit 슈퍼 유저가 되기 - record type
 
 - ppid=2686
   - ppid 필드는 상위 프로세스 ID(PPID)를 기록합니다. 이 경우 2686 은 bash 와 같은 상위 프로세스의 PPID였습니다.
@@ -201,14 +204,62 @@ key="sshd_config"
 
 ```bash
 type=SYSCALL msg=audit(1364481363.243:24287): arch=c000003e
-syscall=2 success=no exit=-13 
-a0=7fffd19c5592 a1=0 a2=7fffd19c4b50 a3=a items=1 
-ppid=2686 pid=3538 auid=1000 
-uid=1000 gid=1000 euid=1000 suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 
+syscall=2 success=no exit=-13 a0=7fffd19c5592 a1=0 a2=7fffd19c4b50 a3=a items=1 
+ppid=2686 pid=3538 auid=1000 uid=1000 gid=1000 euid=1000
+suid=1000 fsuid=1000 egid=1000 sgid=1000 fsgid=1000 
 tty=pts0 ses=1 comm="cat" exe="/bin/cat" 
-subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 
-key="sshd_config"
+subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="sshd_config"
 ```
+
+---
+
+### 1.3 audit 슈퍼 유저가 되기 - network rule
+
+- 유입, 유출되는 네트워크 연결을 확인할 수 있습니다.
+  - 172.20.14.41:60822 에서 현재 localhost 로 접근을 확인 가능합니다!
+
+```bash
+ $ auditctl -a always,exit -F arch=b64 -S accept,connect -F key=external-access
+```
+
+```bash
+type=PROCTITLE msg=audit(2022년 08월 02일 09:47:19.345:372385) : 
+proctitle=/usr/sbin/lighttpd -f /etc/lighttpd/lighttpd.conf
+type=SOCKADDR msg=audit(2022년 08월 02일 09:47:19.345:372385) : 
+saddr={ fam=inet laddr=172.20.14.41 lport=60822 }
+type=SYSCALL msg=audit(2022년 08월 02일 09:47:19.345:372385) : 
+arch=x86_64 syscall=accept success=yes exit=11 
+a0=0x4 a1=0x7fffffffe870 a2=0x7fffffffe844 a3=0x3e8 
+items=0 ppid=1 pid=22267 auid=unset uid=lighttpd gid=lighttpd 
+euid=lighttpd suid=lighttpd fsuid=lighttpd egid=lighttpd sgid=lighttpd 
+fsgid=lighttpd tty=(none) ses=unset comm=lighttpd 
+exe=/usr/sbin/lighttpd key=my_accept
+```
+
+---
+
+### 1.3 audit 슈퍼 유저가 되기 - process rule
+
+- 일반 사용자의 root로 권한 상승 시도를 확인해볼까요?
+
+```bash
+ $ auditctl -a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=10.2.5.b-elevated-privs-setuid
+```
+
+```bash
+type=SYSCALL msg=audit(1659428449.377:378871): arch=c000003e
+syscall=59 success=yes exit=0 a0=6f4f60 a1=6fa4b0 a2=822900 a3=7fffffffe260
+items=2 ppid=14078 pid=15495 auid=1052 uid=1052 gid=1052
+euid=0 suid=0 fsuid=0 egid=1052 sgid=1052 fsgid=1052
+tty=pts8 ses=26782 comm="su" exe="/usr/bin/su"
+key="10.2.5.b-elevated-privs-setuid" 
+---
+type=USER_AUTH msg=audit(1659428456.960:378872): pid=15495 uid=1052 auid=1052 ses=26782
+msg='op=PAM:authentication grantors=pam_faillock,pam_unix acct="root" exe="/usr/bin/su" hostname=localhost.localdomain addr=? terminal=pts/8 res=success'
+```
+
+- 이외에도 시스템 룰 예시를 조금 더 살펴볼려면? **[30-stig.rules](https://github.com/linux-audit/audit-userspace/blob/v3.0.9/rules/30-stig.rules)** 참고!
+  - Security Technical Implementation (STIG, 미국 국방성의 DISA 보안 구성 표준)에서 요구하는 조건을 충족할 수 있도록 구성된 Audit 규칙입니다. 
 
 ---
 

@@ -1,3 +1,5 @@
+유저 UID 를 통한 확인 방법
+
 ```bash
 # ausearch -ui $UID --interpret
 ----
